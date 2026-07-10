@@ -3,8 +3,8 @@
 set -Eeuo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
-baseline="${script_dir}/global_fn.sh"
-candidate="${script_dir}/global_fn_new.sh"
+baseline="${script_dir}/global_fn_legacy.sh"
+candidate="${script_dir}/global_fn.sh"
 
 die() {
   printf 'ERROR: %s\n' "$1" >&2
