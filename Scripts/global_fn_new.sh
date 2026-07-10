@@ -314,3 +314,85 @@ print_log() {
     printf '%b' "$message"
   fi
 }
+
+# ┌──────────────────────────────────────────────────────────────────────────────┐
+# │ Execution Helpers                                                            │
+# └──────────────────────────────────────────────────────────────────────────────┘
+
+spin() {
+  local character=""
+  local exit_code=0
+  local index=0
+  local message="${2:-Working...}"
+  local pid="$1"
+  local spinner="⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
+
+  if [[ ! -t 1 ]]; then
+    wait "$pid" || exit_code=$?
+    return "$exit_code"
+  fi
+
+  tput civis 2> /dev/null || true
+
+  while kill -0 "$pid" 2> /dev/null; do
+    character="${spinner:$index:1}"
+    printf "\r  ${CYAN}%s${NC} %s" "$character" "$message"
+    index=$(((index + 1) % ${#spinner}))
+    sleep 0.08
+  done
+
+  tput cnorm 2> /dev/null || true
+  wait "$pid" || exit_code=$?
+
+  if ((exit_code == 0)); then
+    printf "\r  ${GREEN}${ICON_CHECK}${NC} %s\n" "$message"
+  else
+    printf "\r  ${RED}${ICON_CROSS}${NC} %s\n" "$message"
+  fi
+
+  return "$exit_code"
+}
+
+run_with_status() {
+  local message="$1"
+  shift
+
+  if ((${flg_DryRun:-0} == 1)); then
+    echo -e "  ${YELLOW}⊘${NC} ${message} (dry-run)"
+    return 0
+  fi
+
+  if [[ ${1:-} == "sudo" ]]; then
+    sudo -v 2> /dev/null || true
+  fi
+
+  "$@" &> /dev/null &
+  spin "$!" "$message"
+}
+
+retry() {
+  local max_tries="$1"
+  local pause_seconds=2
+  local remaining_tries="$1"
+  shift
+
+  if "$@"; then
+    return 0
+  fi
+
+  remaining_tries=$((remaining_tries - 1))
+  while ((remaining_tries > 0)); do
+    warn_msg "Reintentando en ${pause_seconds}s (${remaining_tries} intentos restantes): $*"
+    sleep "$pause_seconds"
+    pause_seconds=$((pause_seconds * 2))
+
+    if "$@"; then
+      return 0
+    fi
+
+    remaining_tries=$((remaining_tries - 1))
+  done
+
+  error_msg "Falló después de ${max_tries} intentos: $*"
+  return 1
+}

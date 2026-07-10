@@ -205,6 +205,69 @@ verify_console_and_logging() {
   done
 }
 
+verify_execution_and_retry() {
+  local helper=""
+  local test_dir=""
+
+  test_dir="$(mktemp -d)"
+  trap 'rm -rf "$test_dir"' RETURN
+  mkdir -p "$test_dir/bin"
+
+  cat > "$test_dir/bin/sleep" << 'EOF'
+#!/usr/bin/env bash
+:
+EOF
+  cat > "$test_dir/bin/sudo" << 'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >> "$SUDO_LOG"
+if [[ $1 == "-v" ]]; then
+  exit 0
+fi
+"$@"
+EOF
+  cat > "$test_dir/transient-command" << 'EOF'
+#!/usr/bin/env bash
+count=0
+if [[ -f $RETRY_COUNT ]]; then
+  count=$(<"$RETRY_COUNT")
+fi
+count=$((count + 1))
+printf '%s' "$count" > "$RETRY_COUNT"
+((count >= 2))
+EOF
+  chmod +x "$test_dir/bin/sleep" "$test_dir/bin/sudo" "$test_dir/transient-command"
+
+  for helper in "$baseline" "$candidate"; do
+    rm -f "$test_dir/retry-count" "$test_dir/sudo-log"
+    PATH="$test_dir/bin:$PATH" \
+      RETRY_COUNT="$test_dir/retry-count" \
+      SUDO_LOG="$test_dir/sudo-log" \
+      bash -e -c '
+        source "$1"
+        (exit 0) &
+        spin "$!" "successful spin"
+        (exit 1) &
+        if spin "$!" "failed spin"; then
+          exit 1
+        fi
+        flg_DryRun=0
+        run_with_status "real command" touch "$2/real-command"
+        [[ -f $2/real-command ]]
+        run_with_status "sudo command" sudo touch "$2/sudo-command"
+        [[ -f $2/sudo-command ]]
+        grep -qx -- "-v" "$SUDO_LOG"
+        flg_DryRun=1
+        run_with_status "dry command" touch "$2/dry-command"
+        [[ ! -e $2/dry-command ]]
+        retry 3 "$2/transient-command"
+        [[ $(<"$RETRY_COUNT") == "2" ]]
+        if retry 1 false; then
+          exit 1
+        fi
+      ' _ "$helper" "$test_dir" || die "Execution and retry compatibility check failed: $helper"
+  done
+}
+
 verify_helper "$baseline"
 verify_helper "$candidate"
 compare_inventory "Baseline" "$baseline"
@@ -213,5 +276,6 @@ verify_candidate_behavior
 verify_runtime_and_packages
 verify_hardware_and_interaction
 verify_console_and_logging
+verify_execution_and_retry
 
 printf '\nAPI inventory completed successfully.\n'
