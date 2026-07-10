@@ -1,0 +1,23 @@
+name = "RaVN master"
+group = "RaVN"
+working_dir = "~/Work/RaVN/master"
+
+[[tabs]]
+name = "Codex"
+command = "codex --dangerously-bypass-approvals-and-sandbox"
+
+[[tabs]]
+name = "Opencode"
+command = "opencode"
+
+[[tabs]]
+name = "lazygit"
+command = "lazygit"
+
+[[tabs]]
+name = "neovim"
+command = "nvim"
+
+[[tabs]]
+name = "elio"
+command = "elio"

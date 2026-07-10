@@ -1,0 +1,22 @@
+name = "herdr-terminal-file-manager"
+working_dir = "~/Work/herdr-terminal-file-manager"
+
+[[tabs]]
+name = "Codex"
+command = "codex --dangerously-bypass-approvals-and-sandbox"
+
+[[tabs]]
+name = "Opencode"
+command = "opencode"
+
+[[tabs]]
+name = "lazygit"
+command = "lazygit"
+
+[[tabs]]
+name = "neovim"
+command = "nvim"
+
+[[tabs]]
+name = "elio"
+command = "elio"
