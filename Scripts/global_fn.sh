@@ -1,4 +1,12 @@
 #!/usr/bin/env bash
+
+# Prevent duplicate loading when this library is sourced more than once.
+if [[ ${_GLOBAL_FN_SOURCED:-0} -eq 1 ]]; then
+  # shellcheck disable=SC2317
+  return 0 2> /dev/null || exit 0
+fi
+readonly _GLOBAL_FN_SOURCED=1
+
 # ╭──────────────────────────────────────────────────────────────────────────────╮
 # │                                                                              │
 # │                        Global Functions & Variables                          │
@@ -12,30 +20,49 @@
 # │ Colors & Styling                                                             │
 # └──────────────────────────────────────────────────────────────────────────────┘
 
-# Colors
-readonly RED='\033[0;31m'
-readonly GREEN='\033[0;32m'
-readonly YELLOW='\033[0;33m'
-readonly BLUE='\033[0;34m'
-readonly MAGENTA='\033[0;35m'
-readonly CYAN='\033[0;36m'
-readonly WHITE='\033[1;37m'
-readonly GRAY='\033[0;90m'
-readonly NC='\033[0m'
+# Colors and icons use a terminal-friendly presentation by default. Disable
+# styling automatically for pipes, Docker/CI output, dumb terminals, or when
+# the caller explicitly requests the NO_COLOR convention.
+if [[ -t 1 && ${TERM:-dumb} != "dumb" && -z ${NO_COLOR:-} ]]; then
+  readonly RED=$'\033[0;31m'
+  readonly GREEN=$'\033[0;32m'
+  readonly YELLOW=$'\033[0;33m'
+  readonly BLUE=$'\033[0;34m'
+  readonly MAGENTA=$'\033[0;35m'
+  readonly CYAN=$'\033[0;36m'
+  readonly WHITE=$'\033[1;37m'
+  readonly GRAY=$'\033[0;90m'
+  readonly NC=$'\033[0m'
+  readonly ICON_CHECK="✓"
+  readonly ICON_CROSS="✗"
+  readonly ICON_ARROW="→"
+  readonly ICON_WARN="⚠"
+  readonly ICON_INFO="ℹ"
+else
+  readonly RED=""
+  readonly GREEN=""
+  readonly YELLOW=""
+  readonly BLUE=""
+  readonly MAGENTA=""
+  readonly CYAN=""
+  readonly WHITE=""
+  readonly GRAY=""
+  readonly NC=""
+  readonly ICON_CHECK="[OK]"
+  readonly ICON_CROSS="[ERROR]"
+  readonly ICON_ARROW=">"
+  readonly ICON_WARN="[WARN]"
+  readonly ICON_INFO="[INFO]"
+fi
 
-# Nerd Font Icons
-readonly ICON_CHECK="✓"
-readonly ICON_CROSS="✗"
-readonly ICON_ARROW="→"
-readonly ICON_WARN="⚠"
-readonly ICON_INFO="ℹ"
-readonly ICON_KEY="󰌋"
-readonly ICON_LOCK="󰌾"
-readonly ICON_GIT=""
-readonly ICON_GITHUB=""
-readonly ICON_GEAR="󰒓"
-readonly ICON_ROCKET="󱓞"
-readonly ICON_PACKAGE="󰏗"
+# These are retained as public constants; they are not rendered in logs.
+readonly ICON_KEY="[KEY]"
+readonly ICON_LOCK="[LOCK]"
+readonly ICON_GIT="[GIT]"
+readonly ICON_GITHUB="[GITHUB]"
+readonly ICON_GEAR="[GEAR]"
+readonly ICON_ROCKET="[ROCKET]"
+readonly ICON_PACKAGE="[PACKAGE]"
 
 # ┌──────────────────────────────────────────────────────────────────────────────┐
 # │ Global Variables                                                             │
