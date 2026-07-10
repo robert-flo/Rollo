@@ -487,3 +487,101 @@ clone_or_update_repo() {
     fi
   fi
 }
+
+# ┌──────────────────────────────────────────────────────────────────────────────┐
+# │ Installation Statistics                                                      │
+# └──────────────────────────────────────────────────────────────────────────────┘
+
+_install_ok=0
+_install_fail=0
+_install_skip=0
+_install_ok_list=()
+_install_fail_list=()
+_install_skip_list=()
+
+count_ok() {
+  _install_ok=$((_install_ok + 1))
+  if [[ -n ${1:-} ]]; then
+    _install_ok_list+=("$1")
+  fi
+}
+
+count_fail() {
+  _install_fail=$((_install_fail + 1))
+  if [[ -n ${1:-} ]]; then
+    _install_fail_list+=("$1")
+  fi
+}
+
+count_skip() {
+  _install_skip=$((_install_skip + 1))
+  if [[ -n ${1:-} ]]; then
+    _install_skip_list+=("$1")
+  fi
+}
+
+print_item_list() {
+  local indent="      "
+  local item=""
+  local items=("${@:2}")
+  local prefix="$1"
+  local total_items=${#items[@]}
+  local list=""
+  local index=""
+
+  ((total_items > 0)) || return 0
+
+  if ((total_items <= 5)); then
+    for item in "${items[@]}"; do
+      [[ -n $list ]] && list+=", "
+      list+="$item"
+    done
+    printf "%b %s\n" "$prefix" "$list"
+    return 0
+  fi
+
+  printf "%b\n" "$prefix"
+  printf "%s%s" "$indent" "${items[0]}"
+  for ((index = 1; index < total_items; index++)); do
+    if ((index % 4 == 0)); then
+      printf ",\n%s%s" "$indent" "${items[index]}"
+    else
+      printf ", %s" "${items[index]}"
+    fi
+  done
+  printf "\n"
+}
+
+print_summary() {
+  local border=""
+  local label="${1:-Installation}"
+  local total=$((_install_ok + _install_fail + _install_skip))
+  local title="RaVN ${label} Summary"
+
+  border=$(printf '─%.0s' {1..39})
+  echo ""
+  echo -e "  ${GRAY}┌${border}┐${NC}"
+  printf "  ${GRAY}│${NC}  ${WHITE}%s${NC}%*s${GRAY}│${NC}\n" "$title" "$((37 - ${#title}))" ""
+  echo -e "  ${GRAY}├${border}┤${NC}"
+  printf "  ${GRAY}│${NC}  ${GREEN}${ICON_CHECK}${NC} Exitosos:%25s ${GRAY}│${NC}\n" "$_install_ok"
+  printf "  ${GRAY}│${NC}  ${RED}${ICON_CROSS}${NC} Fallidos:%25s ${GRAY}│${NC}\n" "$_install_fail"
+  printf "  ${GRAY}│${NC}  ${YELLOW}⊘${NC} Omitidos:%25s ${GRAY}│${NC}\n" "$_install_skip"
+  echo -e "  ${GRAY}├${border}┤${NC}"
+  printf "  ${GRAY}│${NC}  Total:${WHITE}%30s${NC} ${GRAY}│${NC}\n" "$total"
+  echo -e "  ${GRAY}└${border}┘${NC}"
+  echo ""
+
+  if ((total > 0)); then
+    echo -e "  ${WHITE}Detalles:${NC}"
+    if ((${#_install_ok_list[@]} > 0)); then
+      print_item_list "    ${GREEN}${ICON_CHECK}${NC} ${WHITE}Exitosos (${#_install_ok_list[@]}):${NC}" "${_install_ok_list[@]}"
+    fi
+    if ((${#_install_fail_list[@]} > 0)); then
+      print_item_list "    ${RED}${ICON_CROSS}${NC} ${WHITE}Fallidos (${#_install_fail_list[@]}):${NC}" "${_install_fail_list[@]}"
+    fi
+    if ((${#_install_skip_list[@]} > 0)); then
+      print_item_list "    ${YELLOW}⊘${NC} ${WHITE}Omitidos (${#_install_skip_list[@]}):${NC}" "${_install_skip_list[@]}"
+    fi
+    echo ""
+  fi
+}

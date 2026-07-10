@@ -340,6 +340,32 @@ EOF
   done
 }
 
+verify_statistics_and_summary() {
+  local helper=""
+  local output=""
+
+  for helper in "$baseline" "$candidate"; do
+    output="$(bash -e -c '
+      source "$1"
+      count_ok "alpha"
+      count_ok "beta"
+      count_fail "gamma"
+      count_skip "delta"
+      [[ $_install_ok == 2 && $_install_fail == 1 && $_install_skip == 1 ]]
+      [[ ${_install_ok_list[*]} == "alpha beta" ]]
+      print_item_list "Short:" one two three
+      print_item_list "Long:" one two three four five six
+      print_summary "Test"
+    ' _ "$helper")" || die "Statistics compatibility check failed: $helper"
+    clean_output="$(printf '%s' "$output" | sed "s/\x1b\[[0-9;]*m//g")"
+    [[ $clean_output == *"Short: one, two, three"* ]] || die "Short list output changed: $helper"
+    [[ $clean_output == *"Long:"* && $clean_output == *"one, two, three, four,"* ]] || die "Long list output changed: $helper"
+    [[ $clean_output == *"RaVN Test Summary"* ]] || die "Summary title changed: $helper"
+    [[ $clean_output == *"Exitosos:"* && $clean_output == *"Fallidos:"* && $clean_output == *"Omitidos:"* ]] || die "Summary counts changed: $helper"
+    [[ $clean_output == *"Exitosos (2): alpha, beta"* ]] || die "Summary details changed: $helper"
+  done
+}
+
 verify_helper "$baseline"
 verify_helper "$candidate"
 compare_inventory "Baseline" "$baseline"
@@ -350,5 +376,6 @@ verify_hardware_and_interaction
 verify_console_and_logging
 verify_execution_and_retry
 verify_downloads_and_repositories
+verify_statistics_and_summary
 
 printf '\nAPI inventory completed successfully.\n'
