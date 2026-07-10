@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/bash
 
 set -Eeuo pipefail
 
@@ -67,11 +67,11 @@ verify_runtime_and_packages() {
   mkdir -p "$test_dir/bin" "$test_dir/Configs/.local/lib/hyde"
 
   cat > "$test_dir/bin/pacman" << 'EOF'
-#!/usr/bin/env bash
+#!/usr/bin/bash
 [[ $1 == "-Q" && $2 == "installed-package" ]]
 EOF
   cat > "$test_dir/Configs/.local/lib/hyde/pm.sh" << 'EOF'
-#!/usr/bin/env bash
+#!/usr/bin/bash
 [[ $1 == "query" && $2 == "repository-package" ]] || [[ $1 == "info" && $2 == "aur-package" ]]
 EOF
   chmod +x "$test_dir/bin/pacman" "$test_dir/Configs/.local/lib/hyde/pm.sh"
@@ -268,6 +268,78 @@ EOF
   done
 }
 
+verify_downloads_and_repositories() {
+  local helper=""
+  local test_dir=""
+
+  test_dir="$(mktemp -d)"
+  trap 'rm -rf "$test_dir"' RETURN
+  mkdir -p "$test_dir/bin" "$test_dir/fallback-bin"
+  ln -s /usr/bin/dirname "$test_dir/fallback-bin/dirname"
+  ln -s /usr/bin/realpath "$test_dir/fallback-bin/realpath"
+
+  cat > "$test_dir/bin/curl" << 'EOF'
+#!/usr/bin/bash
+if [[ $1 == "-fsSL" && $2 == "-o" ]]; then
+  printf 'curl:%s' "$4" > "$3"
+else
+  printf 'curl:%s' "${@: -1}"
+fi
+EOF
+  cat > "$test_dir/bin/wget" << 'EOF'
+#!/usr/bin/bash
+if [[ $1 == "-q" && $2 == "-O" && $3 != "-" ]]; then
+  printf 'wget:%s' "$4" > "$3"
+else
+  printf 'wget:%s' "${@: -1}"
+fi
+EOF
+  cat > "$test_dir/bin/git" << 'EOF'
+#!/usr/bin/bash
+printf '%s\n' "$*" >> "$GIT_LOG"
+if [[ $1 == "clone" ]]; then
+  mkdir -p "${@: -1}/.git"
+fi
+EOF
+  chmod +x "$test_dir/bin/curl" "$test_dir/bin/wget" "$test_dir/bin/git"
+
+  for helper in "$baseline" "$candidate"; do
+    rm -rf "$test_dir/clone" "$test_dir/dry"
+    rm -f "$test_dir/download" "$test_dir/git-log" "$test_dir/spinner"
+    PATH="$test_dir/bin:$PATH" GIT_LOG="$test_dir/git-log" bash -e -c '
+      source "$1"
+      download_file "https://example.test/curl" "$2/download"
+      [[ $(<"$2/download") == "curl:https://example.test/curl" ]]
+      [[ $(download_file "https://example.test/stdout") == "curl:https://example.test/stdout" ]]
+      download_with_spinner "https://example.test/spinner" "$2/spinner"
+      [[ $(<"$2/spinner") == "curl:https://example.test/spinner" ]]
+      flg_DryRun=0
+      clone_or_update_repo "Example" "owner/repository" "$2/clone" "main"
+      [[ -d $2/clone/.git ]]
+      grep -Fqx "clone https://github.com/owner/repository.git $2/clone" "$GIT_LOG"
+      grep -Fqx -- "-C $2/clone checkout main" "$GIT_LOG"
+      : > "$GIT_LOG"
+      clone_or_update_repo "Example" "owner/repository" "$2/clone" "main"
+      grep -Fqx -- "-C $2/clone remote set-url origin https://github.com/owner/repository.git" "$GIT_LOG"
+      grep -Fqx -- "-C $2/clone reset --hard origin/main" "$GIT_LOG"
+      : > "$GIT_LOG"
+      flg_DryRun=1
+      clone_or_update_repo "Dry" "owner/repository" "$2/dry" "main"
+      [[ ! -e $2/dry ]]
+      [[ ! -s $GIT_LOG ]]
+    ' _ "$helper" "$test_dir" || die "Download and repository compatibility check failed: $helper"
+  done
+
+  rm -f "$test_dir/bin/curl"
+  for helper in "$baseline" "$candidate"; do
+    PATH="$test_dir/bin:$test_dir/fallback-bin" /usr/bin/bash -e -c '
+      source "$1"
+      download_file "https://example.test/wget" "$2/wget"
+      [[ $(<"$2/wget") == "wget:https://example.test/wget" ]]
+    ' _ "$helper" "$test_dir" || die "Wget fallback check failed: $helper"
+  done
+}
+
 verify_helper "$baseline"
 verify_helper "$candidate"
 compare_inventory "Baseline" "$baseline"
@@ -277,5 +349,6 @@ verify_runtime_and_packages
 verify_hardware_and_interaction
 verify_console_and_logging
 verify_execution_and_retry
+verify_downloads_and_repositories
 
 printf '\nAPI inventory completed successfully.\n'

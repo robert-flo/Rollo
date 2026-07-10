@@ -396,3 +396,94 @@ retry() {
   error_msg "Falló después de ${max_tries} intentos: $*"
   return 1
 }
+
+# ┌──────────────────────────────────────────────────────────────────────────────┐
+# │ Download Helpers                                                             │
+# └──────────────────────────────────────────────────────────────────────────────┘
+
+download_file() {
+  local output="${2:-}"
+  local url="$1"
+
+  if command_exists curl; then
+    if [[ -n $output ]]; then
+      curl -fsSL -o "$output" "$url"
+    else
+      curl -fsSL "$url"
+    fi
+  elif command_exists wget; then
+    if [[ -n $output ]]; then
+      wget -q -O "$output" "$url"
+    else
+      wget -q -O - "$url"
+    fi
+  else
+    error_msg "Se requiere curl o wget, pero ninguno está instalado"
+    return 1
+  fi
+}
+
+download_with_spinner() {
+  local message="${3:-Descargando...}"
+  local output="$2"
+  local url="$1"
+
+  download_file "$url" "$output" &> /dev/null &
+  spin "$!" "$message"
+}
+
+# ┌──────────────────────────────────────────────────────────────────────────────┐
+# │ Repository Helpers                                                           │
+# └──────────────────────────────────────────────────────────────────────────────┘
+
+clone_or_update_repo() {
+  local destination="$3"
+  local name="$1"
+  local prefer_ssh="${5:-}"
+  local ref="${4:-master}"
+  local remote_url=""
+  local repository="$2"
+
+  remote_url="https://github.com/${repository}.git"
+
+  if [[ $prefer_ssh == "ssh" ]]; then
+    if { [[ -f $HOME/.ssh/id_ed25519 ]] || [[ -f $HOME/.ssh/id_rsa ]]; } && ssh -T -o ConnectTimeout=3 -o BatchMode=yes git@github.com 2>&1 | grep -q "successfully authenticated"; then
+      remote_url="git@github.com:${repository}.git"
+      info "Llave SSH autorizada detectada. Usando protocolo SSH para ${name}."
+    elif [[ -f $HOME/.ssh/id_ed25519 || -f $HOME/.ssh/id_rsa ]]; then
+      warn_msg "Llave SSH detectada pero no autorizada en GitHub. Usando protocolo HTTPS para ${name}."
+    fi
+  fi
+
+  if ((${flg_DryRun:-0} == 1)); then
+    echo -e "  ${YELLOW}⊘${NC} Clonar/actualizar ${name} (dry-run)"
+    return 0
+  fi
+
+  if [[ -d $destination/.git ]]; then
+    info "Actualizando ${name} existente..."
+    git -C "$destination" remote set-url origin "$remote_url" &> /dev/null || true
+    if retry 3 git -C "$destination" fetch origin "$ref" &> /dev/null &&
+      git -C "$destination" checkout "$ref" &> /dev/null &&
+      git -C "$destination" reset --hard "origin/${ref}" &> /dev/null; then
+      success "${name} sincronizado en la rama ${ref}."
+    else
+      error_msg "No se pudo sincronizar ${name}."
+      return 1
+    fi
+  else
+    info "Clonando ${name} desde: ${remote_url}"
+    if retry 3 git clone "$remote_url" "$destination" &> /dev/null; then
+      git -C "$destination" fetch origin "$ref" &> /dev/null &&
+        git -C "$destination" checkout "$ref" &> /dev/null
+
+      if [[ $prefer_ssh == "ssh" && $remote_url == git@* ]]; then
+        git -C "$destination" remote set-url origin "$remote_url"
+      fi
+      success "${name} sincronizado en la rama ${ref}."
+    else
+      error_msg "No se pudo clonar ${name}."
+      return 1
+    fi
+  fi
+}
