@@ -1,6 +1,0 @@
-# -*- mode: snippet -*-
-# name: lexical-binding header
-# key: lex
-# --
-;;; ${1:`(file-name-nondirectory (buffer-file-name))`} --- ${2:Description} -*- lexical-binding: t; -*-
-$0-

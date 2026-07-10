@@ -1,5 +1,0 @@
-# -*- mode: snippet -*-
-# name: paragraph
-# key: p
-# --
-<p class="${1}">${2}</p>

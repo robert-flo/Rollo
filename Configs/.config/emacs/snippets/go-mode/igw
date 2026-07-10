@@ -1,7 +1,0 @@
-# -*- mode: snippet -*-
-# name: if got != want
-# key: igw
-# --
-if got != want {
-	${1:}
-}

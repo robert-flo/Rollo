@@ -1,4 +1,0 @@
-preview-window: "right:60%"
-# General settings
-multi: true
-tiebreak: "index,begin,end,length"

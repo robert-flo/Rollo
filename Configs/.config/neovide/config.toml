@@ -1,6 +1,0 @@
-[font]
-# Config base de Neovide (tamaño de fuente).
-normal = ""FiraCode Nerd Font"
-size = 11.0
-hinting = "full"
-edging = "antialias"

@@ -1,7 +1,0 @@
-# -*- mode: snippet -*-
-# name: nixt
-# key: nixt
-# condition: t
-# --
-#+begin_src nix :tangle modules/cli-tui/$1.nix
-#+end_src

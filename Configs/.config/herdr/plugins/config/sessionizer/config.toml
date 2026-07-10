@@ -1,4 +1,0 @@
-[projects]
-roots = ["~/Work"]
-git_only = true
-depth = 2

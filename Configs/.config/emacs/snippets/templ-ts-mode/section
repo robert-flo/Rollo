@@ -1,7 +1,0 @@
-# -*- mode: snippet -*-
-# name: section
-# key: sec
-# --
-<section class="${1}">
-$0
-</section>
