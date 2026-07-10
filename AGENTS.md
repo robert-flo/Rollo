@@ -1,2856 +1,344 @@
-# AGENTS.md
+# AGENTS.md — RaVN
 
-## 🎛️ Task Triage & Complexity Classification
+Guidance for any agent (or developer) working in the RaVN dotfiles repository. Sections are ordered to build context progressively: repo orientation, code standards, configuration mechanics, dev/release workflow, the mandatory Matt Pocock skills planning flow, and finally the RaVN-specific task execution process that ties everything together.
 
-Before starting any task, evaluate its impact and complexity to determine the correct execution path:
+## Table of Contents
 
-1. **Trivial / Administrative Tasks:** Simple configuration changes (e.g., updating `.gitignore`, modifying environment variable templates), fixing typos in documentation, or minor dependency updates.
-   * **Workflow:** **Fast-Track.** You are permitted to bypass steps 1 through 3. Proceed directly to Step 4 (`/implement`) and finalize with Step 5 (`/code-review`).
-2. **Engineering Tasks:** Any change that alters, adds, or removes business logic, components, database schemas, API endpoints, or software architecture.
-   * **Workflow:** **Full Pipeline.** You must execute the strict 5-step development workflow sequentially without exceptions.
+1. [Repository Structure & Purpose](#repository-structure--purpose)
+2. [Global Helper Library (`global_fn.sh`)](#global-helper-library-global_fnsh)
+3. [Style](#style)
+4. [Error Handling](#error-handling)
+5. [ShellCheck & Scripting Safety](#shellcheck--scripting-safety)
+6. [Verification](#verification)
+7. [Migrations](#migrations)
+8. [Configuration Tracking (`restore_cfg.psv`)](#configuration-tracking-restore_cfgpsv)
+9. [User Preferences](#user-preferences)
+10. [Visual Changes](#visual-changes)
+11. [Git Worktree Workflow (Development)](#git-worktree-workflow-development)
+12. [Branching & Release Policy](#branching--release-policy)
+13. [Task Planning & Skills Workflow (Matt Pocock Skills)](#task-planning--skills-workflow-matt-pocock-skills)
+14. [Task Execution Workflow](#task-execution-workflow)
 
 ---
 
-## 🔄 The 5-Step Development Pipeline (Matt Pocock Workflow)
+## Repository Structure & Purpose
 
-For all Engineering Tasks, you must strictly follow this chronological sequence. To preserve your context window, load and read the corresponding skill file under `.github/skills/[skill-name].md` (or your local skills path) on-demand right before starting each phase.
+- `Configs/` - Source of truth for clean configuration files and templates that populate the user's `$HOME` (e.g., `.config/`, `.bashrc`).
+- `Scripts/` - Automation scripts for installation, updating, and restoring configuration states:
+  - `global_fn.sh` - Core library of shared variables, visual logging settings, and professional installer utility functions. Sourced in scripts via `source "${scrDir}/global_fn.sh"`.
+  - `install.sh` - Main orchestration entry point (handles packages, services, config restoration, migrations, and final system post-install tweaks).
+  - `restore_cfg.sh` - Restores configuration directories and files using tracking flags defined in `restore_cfg.psv`.
+  - `migrations/` - Version-specific migration scripts (e.g., `v26.4.3.sh`) run automatically by the installer.
+  - `extra/` - Optional, standalone scripts not invoked by `install.sh` — launched manually as needed (e.g., external drive mounting, Flatpak installation, additional modules, app/symlink restoration).
+  - `launchers/` - Subsystem for installing and managing app launchers (Omarchy-style web apps and TUIs), including install binaries (`omarchy-*`, `ravn-browser-webapp-install`) and supporting libs.
+  - `ravn/` - The actual RaVN engine: a modular installation framework with its own `AGENTS.md`, `framework/` (core logic: discovery, hooks, packaging, pipeline, retry, state), and `tasks/` organized by domain (`00-core`, `10-apps`, `20-shell`, `30-system`). The root-level `install.sh` is a separate, higher-level orchestration entry point. Includes `test-task.sh` for Docker-based local CI.
+  - `ravnvm/` - Script for running RaVN inside a virtual machine, for testing and development purposes.
+- `Configs/.local/bin/` - Personal CLI utility scripts, copied to `$HOME/.local/bin` by the dotfiles installer. Includes git workflow tools (`git-create-worktree`, `git-bare-clone`, `git-issue-worktree`, `git-setup`), the dotfiles reconciliation TUI `ravn-dot`, Emacs helpers, Hyprland/hyde utilities (`hyde-shell`, `hydectl`, `hyde-ipc`, `monitor-toggle.sh`, `toggle-gaps.sh`, etc.), and media tools (`descargar-video`, `play-yt`, `record.sh`).
+- `Source/arcs/` - Compressed tar archives (`.tar.gz`, `.vsix`) containing fonts, cursors, SDDM themes, GTK assets, and Firefox/Code configuration baselines.
+- `make/` - Modular Makefile system, split by task domain: `aliases.mk`, `cleanup.mk`, `dev.mk`, `docs.mk`, `format.mk`, `git.mk`, `logs.mk`, `system.mk`, `updates.mk`. `make/STYLE.md` standardizes the design language (naming, structure, output conventions) for all make targets in this directory — scoped specifically to `make/`, not a superset of the general "Style" section.
+- `.git-hooks/` - Contains the pre-commit hook (shfmt + shellcheck quality gate); see "Verification".
+- `docs/` - Documentation site built with Starlight (Astro).
 
-| Step | Command | Core Purpose / Description | Exit Gate (Verification) |
+## Global Helper Library (`global_fn.sh`)
+
+> [!IMPORTANT]
+> **MANDATORY CHECK**: Before implementing any custom helper logic (such as git cloning, file downloading, retries, spinners, or status logging), you **MUST** inspect [global_fn.sh](Scripts/global_fn.sh) and reuse its existing helper functions (like `clone_or_update_repo` or `download_with_spinner`) instead of writing new custom shell routines.
+
+Always prioritize the helper functions imported from [global_fn.sh](Scripts/global_fn.sh) over raw shell commands:
+
+- **Logging:** Use `info`, `success`, `warn_msg`, `error_msg`, `step`, and `print_log` for unified, semantic output with visual indicators.
+- **Process Feedback:** Wrap long actions in `spin <pid> [msg]` or run them directly using `run_with_status "message" <command>` to show an interactive Braille spinner.
+- **Package Auditing:** Use `pkg_installed <package>` to check package status.
+- **Git & Downloads:** Use `clone_or_update_repo <name> <repo> <dest> [branch] [ssh]` and `download_file <url> [dest]` to perform downloads and cloning with built-in retry mechanisms and user feedback.
+- **Robustness:** Use `retry <tries> <command>` for actions prone to transient failures.
+
+## Style
+
+- Two spaces for indentation, no tabs.
+- Use bash 5 conditionals: use `[[ ]]` for string/file tests and `(( ))` for numeric tests.
+- In `[[ ]]`, don't quote variables, but do quote string literals when comparing values (e.g., `[[ $branch == "dev" ]]`).
+  > Note: this applies only inside `[[ ]]`. For command arguments outside `[[ ]]`, see the SC2086 rule in "ShellCheck & Scripting Safety" — there, quoting is always required.
+- Prefer `(( ))` over numeric operators inside `[[ ]]` (e.g., `(( count < 50 ))`, not `[[ $count -lt 50 ]]`).
+- For strings/paths with spaces, quote them instead of escaping spaces with `\ ` (e.g., `"$APP_DIR/Disk Usage.desktop"`, not `$APP_DIR/Disk\ Usage.desktop`).
+- Shebangs:
+  - Standard bash scripts must use `#!/usr/bin/env bash` consistently (never `#!/usr/bin/env sh`).
+  - Migration scripts executed via `sh` by the installer should use `#!/usr/bin/env sh` (or be POSIX compliant).
+- **`local` in functions**: every function-scoped variable must be declared with `local`. When the value comes from a command, declare the empty variable first and assign it on a separate line — never `local var=$(cmd)` on a single line, since it masks the command's exit code (SC2155). Correct example:
+  ```bash
+  local key_id=""
+  key_id=$(gpg --list-secret-keys ... || true)
+  ```
+- **Naming**:
+  - Variables and functions: `snake_case`.
+  - Read-only constants (colors, icons, script-level config): `UPPER_SNAKE_CASE` + `readonly`.
+  - Functions: prefixed by verb/category based on responsibility, not by source file (e.g., `print_*`, `verify_*`, `setup_*`, `configure_*`, `get_*`, `do_*`).
+
+## Error Handling
+
+- For scripts with strict error handling (`set -e` / `pipefail`), protect pipelines or command substitutions in variable assignments that might return a non-zero exit status (e.g., `grep` queries returning empty results) by appending `|| true` or `|| echo ""` to prevent premature shell termination.
+
+## ShellCheck & Scripting Safety
+
+- **Zero-Warning Policy**: All new or modified shell scripts must pass `shellcheck` with zero warnings or errors before committing. The pre-commit hook (`shellcheck` + `shfmt`) will block the commit if any warnings are found. This rule is non-negotiable.
+  - **Exclusion list**: the list of files/paths excluded from the check lives only inside the pre-commit hook (`.git/hooks/pre-commit` or the source script that generates it) — that is the single source of truth. Do not duplicate this list here; if you need to know what's excluded, consult the hook directly.
+- **Direct Command Checks (SC2181/SC2319)**: Avoid checking `$?` indirectly (e.g., `if [ $? -eq 0 ]`). Check commands directly (e.g., `if my_command; then`) or use success tracking variables (`success=0; my_command || success=1; if (( success == 0 )); then`).
+- **Quote Variable Expansions (SC2086)**: Always double-quote variable expansions when they are used as command arguments to prevent word splitting (e.g., `"$var"`), except inside `[[ ]]` where expansion is safe.
+- **Built-in Parameter Expansion (SC2001)**: Avoid calling external tools like `sed` or `awk` for simple string replacements on single variables; prefer built-in Bash parameter expansion (e.g., `${var//search/replace}`).
+- **Localizing False Positives**: Do not ignore entire files for linter warnings. Use inline `# shellcheck disable=SCxxxx` directives only on the specific lines where a false positive occurs (e.g., AWK variables inside single quotes).
+
+## Verification
+
+### Automatic (pre-commit hook)
+
+On every commit, the hook (`shfmt` + `shellcheck`) automatically runs only against **staged** files that are shell scripts:
+
+- **shfmt**: auto-fixes formatting in place and re-stages the changed files. Exact flags: `shfmt -i 2 -sr -kp -ci -w "$file"`.
+- **shellcheck**: blocks the commit if it finds warnings. On failure, it generates an AI-ready report in `logs/shellcheck-report-<timestamp>.log` with the warnings and a ready-to-use prompt for asking an agent to explain and fix each one.
+- **Escape hatch** (emergencies only): `SKIP_HOOKS=1 git commit` — skips both checks.
+
+### Manual (full-repo audit)
+
+To review the entire repo (not just staged files), e.g. before a release:
+
+```bash
+# ShellCheck across all scripts
+shellcheck Scripts/**/*.sh
+
+# shfmt: only shows the diff, does NOT modify files (unlike the hook)
+shfmt -i 2 -sr -kp -ci -d Scripts/
+```
+
+> Note: `shellcheck Scripts/**/*.sh` requires `shopt -s globstar` enabled in the bash session to expand recursively; otherwise it will only match one level of subdirectories.
+> Note: unlike the hook (which uses `-w` and auto-fixes), the manual command uses `-d` (diff only) — it doesn't modify anything, it just shows you what would change.
+
+## Migrations
+
+- Located in `Scripts/migrations/`, named after version tags in `vYY.M.patch.sh` format (e.g., `v25.8.2.sh`) — the same versioning scheme used for release tags (see "Branching & Release Policy").
+- Migrations are run via `sh` inside `install.sh`. For shebang and POSIX-compliance requirements, see "Style" § Shebangs — do not restate those rules here.
+- Output brief details to stdout explaining what the migration is adjusting, so the user is informed during updates.
+
+## Configuration Tracking (`restore_cfg.psv`)
+
+`restore_cfg.psv` is the manifest that defines which files/directories are tracked between `Configs/` (repo) and `$HOME` (live system). It is the single source of truth consulted both by `restore_cfg.sh` (repo → `$HOME`, automatic) and by `ravn-dot` (bidirectional review — see "User Preferences" § Live Synchronization).
+
+1. **Adding files to tracking:** to add a configuration target to the restore system, insert a row using the format:
+   ```text
+   Flag|${HOME}/path/to/directory|file_name|dependency
+   ```
+   **Flags:**
+   - `P` (Populate/Preserve) - Copy target from `Configs/` to destination ONLY if it does not exist. Prevents overwriting local user changes.
+   - `S` (Sync) - Copy target from `Configs/` and overwrite local file.
+   - `O` (Overwrite) - Force overwrite. Overwrites everything recursively if the target is a directory.
+   - `B` (Backup) - Backs up the target before modifying.
+   - `I` (Install/Import) - Imports or configures associated packages.
+2. **Reviewing and syncing changes:** run `ravn-dot`. It reads `restore_cfg.psv` to determine which files are tracked, diffs each one between `Configs/` and `$HOME`, and presents an interactive `fzf` menu per differing file, where you can view the diff, resolve visually with `meld` or `nvim`, or choose which side to keep (repo → `$HOME` or `$HOME` → repo). This is the current, human-driven source of truth for reconciling drift — see "User Preferences" § Live Synchronization for how this fits into the agent's automated workflow.
+
+## User Preferences
+
+### Live Synchronization
+
+`Configs/` (repo) and `$HOME` (live system) must be kept in sync in both directions, but the tooling for each direction is different:
+
+- **repo → `$HOME`**: Whenever a file inside `Configs/` is changed, immediately synchronize it to its corresponding live path in `$HOME` — via `restore_cfg.sh` or a manual copy. `restore_cfg.sh` only supports this direction.
+- **`$HOME` → repo**: Whenever a file inside `$HOME` is changed and needs to be captured back into the repo (e.g., after live validation — see "Task Execution Workflow" § Phase 3), copy it back to its corresponding path in `Configs/`. There is no automated tool for this direction; `restore_cfg.psv` serves as the map/bridge between `$HOME` and `Configs/` paths and should guide which files to copy (see "Configuration Tracking").
+- **`ravn-dot`**: an interactive TUI (`fzf`-based) for reviewing and reconciling differences between `Configs/` and `$HOME` (see "Configuration Tracking" for details). It has no headless/non-interactive mode (only `--dry-run`), so **agents should not invoke it as part of an automated workflow** — it's a tool for manual human review, useful for auditing drift between repo and `$HOME` outside of a specific task.
+
+## Visual Changes
+
+- When making visual, style, or layout changes to **Waybar** (its different layouts/configs), always verify the result by taking and analyzing a screenshot before considering the change complete.
+  - **Capture command**: `hyde-shell screenshot m` (monitor screenshot, per `keybindings.conf`).
+  - **Save location**: at the agent's discretion (e.g., a temp path).
+  - **Cleanup**: the screenshot file **must always be deleted** after it has been analyzed — never leave capture artifacts behind.
+  - **Analysis**: the agent itself inspects the captured image directly (no separate review step by the user is implied by this rule).
+  - **Scope**: this rule is specific to Waybar and its layouts. It does not extend to other visual surfaces (GTK themes, SDDM, cursors, etc.) unless stated elsewhere.
+
+## Git Worktree Workflow (Development)
+
+To protect the user's active system configurations from accidental resets or uncommitted code loss during development, and to maintain task isolation:
+
+> [!NOTE]
+> **Disambiguating "ravn" paths** — three distinct things share this name:
+> - `Scripts/ravn/` — the RaVN engine source code, inside this repo (see "Repository Structure & Purpose").
+> - `~/.local/share/ravn/` — the live, installed configuration clone on the user's system. **Formerly** used directly for active development (deprecated practice) — today it should only be touched for tracking config updates or system-wide script execution, never for feature development.
+> - `~/Work/RaVN/dev` (and other worktrees under `~/Work/<repo>/`) — the **current, correct** location for all active development.
+
+- **Isolated Development in `~/Work`**: All active development work must be carried out inside worktrees under `~/Work/<repo>/` (which are created from the bare repository at `~/.local/share/git-bare/<repo>`).
+- **No Direct Modification in Live Clone**: Do not perform development or commit changes directly inside the live configuration clone located at `~/.local/share/ravn/` (except when updating tracking config files or executing system-wide scripts).
+- **Automation Utilities** (all restored under `~/.local/bin/` — see "Repository Structure & Purpose" for their source in `Configs/.local/bin/`):
+  - `git-create-worktree` for general feature/chore branches.
+  - `git-issue-worktree` for GitHub-tracked issues.
+  - > [!IMPORTANT]
+    > **MANDATORY**: `git-bare-clone` must always be used to create bare repositories (whether invoked via a `make` target or manually) — never create a bare repo with raw `git` commands. This is a recurring compliance gap: agents have created bare repos manually instead of using this script.
+- **Workflow Benefit**: Developing under `~/Work` isolates development changes from host configuration restoration processes. This eliminates the need to manually disable ravn tracking (e.g. setting `ravn=false` in `Scripts/ravn/config/packages.conf`) to protect local changes from being overwritten during installer or `restore_cfg.sh` runs.
+
+## Branching & Release Policy
+
+Refer to [RELEASE_POLICY.md](RELEASE_POLICY.md) for details. **The following rules are non-negotiable and must be strictly followed by all agents and developers:**
+
+- **`dev`**: The active branch for all features and PRs. **Under no circumstances should `dev` receive direct commits.** It must always be fed exclusively by auxiliary topic/feature branches created in isolated worktrees (via `git-create-worktree`, in `Configs/.local/bin/` — see "Repository Structure & Purpose") and merged in.
+- **`rc`** (Release Candidate): Receives a merge from `dev` on the second-to-last Friday of the month. Frozen for regression testing and bug fixes only. **`rc` only receives merges from `dev`.**
+- **`master`**: Receives a merge from `rc` on the last Friday of the month for the official monthly version release, tagged as `YY.M.patch` (e.g., `26.4.3`) — consistent with the versioning scheme already used by migration scripts in `Scripts/migrations/`.
+
+> [!WARNING]
+> **This policy is currently enforced by convention only, not by tooling.** The pre-commit hook (see "Verification") checks formatting/linting, but does **not** currently block direct commits to `dev`, `rc`, or `master`. In practice, direct commits to `dev` happen regularly despite this rule. Until branch protection is implemented (at the hook level or via the git host), agents and developers must self-enforce this policy manually — treat it as strictly as if it were technically blocked.
+
+## Task Planning & Skills Workflow (Matt Pocock Skills)
+
+This repository mandates [Matt Pocock's engineering skills](https://github.com/mattpocock/skills) for planning and reviewing work. `/setup-matt-pocock-skills` has already been run — the issue tracker, triage label vocabulary, and domain doc layout it configures live at `docs/agents/issue-tracker.md`, `docs/agents/triage-labels.md`, and `docs/agents/domain.md`.
+
+> [!NOTE]
+> Unsure which skill fits a given situation? Run `/ask-matt` — it's the router over all installed skills.
+
+### Task Sizing (before choosing a path)
+
+> This classification is a local convention for this repository — it does not come from the Matt Pocock skills repo itself, which branches on "single-session vs. multi-session" rather than "trivial vs. engineering." It is layered on top of the official flow below, not a replacement for it. Do not confuse this with the `/triage` skill (below), which is a different thing: `/triage` moves *incoming* issues/PRs through a bug/enhancement state machine — it has nothing to do with sizing a task you're about to start.
+
+1. **Trivial / Administrative Tasks** — simple config changes (e.g., `.gitignore`, env var templates), doc typo fixes, minor dependency bumps.
+   - **Fast-Track**: skip straight to `/implement`, then close with `/code-review`.
+2. **Engineering Tasks** — anything that alters, adds, or removes business logic, task modules, `restore_cfg.psv` schema, or architecture.
+   - **Full Pipeline**: execute the 5-step chain below, sequentially, without exceptions.
+
+> [!IMPORTANT]
+> **Classify out loud, don't decide silently.** `/grill-with-docs` has `disable-model-invocation: true` by design — Matt Pocock deliberately reserved the decision to start an interview for the human, not the agent. Silently classifying a task as Trivial and jumping straight to `/implement` overrides that design choice. Instead:
+> 1. Classify the task using the criteria above.
+> 2. **State the classification and the resulting path before writing any code** — e.g., *"Classifying this as Trivial — going straight to `/implement`. Say so if you'd rather start with `/grill-with-docs`."* This gives the user a cheap veto before work begins, not after.
+> 3. **When in doubt, default to the Full Pipeline**, not the shortcut — consistent with "Strict Operational Rules" § Anti-Rationalization below. The Fast-Track is for genuinely unambiguous, low-risk edits; if there's any real design or domain ambiguity, that ambiguity is exactly what `/grill-with-docs` exists to resolve.
+
+### The Main Build Chain
+
+```txt
+/grill-with-docs → /to-spec → /to-tickets → /implement → /code-review
+```
+
+This is the official main flow of the Matt Pocock skills (per `ask-matt`'s routing logic). Each step is **user-invoked only** (the agent does not reach for these on its own) — but per "Strict Operational Rules" below, once a task is classified as an Engineering Task, the agent must drive this chain itself in sequence rather than waiting to be prompted step by step.
+
+| Step | Command | Purpose | Exit Gate |
 | :---: | :--- | :--- | :--- |
-| **1** | `/grill-with-docs` | A relentless interview to sharpen a plan or design, which also creates docs (ADR's and glossary) as we go. | All design ambiguities are resolved; ADRs and glossary are updated. |
-| **2** | `/to-spec` | Turn the current conversation into a spec and publish it to the project issue tracker — no interview, just synthesis of what you've already discussed. | A technical spec is synthesized and published to the configured tracker. |
-| **3** | `/to-tickets` | Break a plan, spec, or the current conversation into a set of tracer-bullet tickets, each declaring its blocking edges, published to the configured tracker — edges as text in a local file, or native blocking links on a real tracker. | An atomic set of tickets with explicit blocking edges is published/saved. |
-| **4** | `/implement` | Implement a piece of work based on a spec or set of tickets. | Working code is written and automated tests pass successfully. No "vibe coding". |
-| **5** | `/code-review` | Review the changes since a fixed point (commit, branch, tag, or merge-base) along two axes — Standards (does the code follow this repo's documented coding standards?) and Spec (does the code match what the originating issue/PRD asked for?). Runs both reviews in parallel sub-agents and reports them side by side. Use when the user wants to review a branch, a PR, work-in-progress changes, or asks to "review since X". | A side-by-side parallel report detailing Standards vs. Spec compliance. |
+| 1 | `/grill-with-docs` | A relentless interview to sharpen a plan or design, writing resolved terms to `CONTEXT.md` and hard decisions as ADRs as it goes. | Design ambiguities resolved; glossary/ADRs updated. |
+| 2 | `/to-spec` | Synthesize the current conversation into a spec (no re-interviewing) and publish it to the issue tracker with the `ready-for-agent` label. | Spec published to the tracker. |
+| 3 | `/to-tickets` | Break the spec/conversation into tracer-bullet tickets, each declaring its blocking edges, published to the tracker. | Atomic ticket set with blocking edges published. |
+| 4 | `/implement` | Implement a piece of work from a spec or ticket, driving `/tdd` internally at agreed seams. Runs typechecking and tests regularly. | Working code, tests passing. No "vibe coding." |
+| 5 | `/code-review` | Two-axis parallel review of the diff since a fixed point — Standards (repo conventions) and Spec (does it match the ticket/PRD). | Side-by-side Standards vs. Spec report. |
 
----
-
-## 🚫 Strict Operational Rules & Anti-Rationalization
-
-* **Absolute Sequentiality:** You are strictly forbidden from running `/implement` for engineering tasks unless a valid specification (`/to-spec`) and broken-down tickets (`/to-tickets`) already exist to back it up.
-* **Verification is Non-Negotiable:** Do not claim a task is complete based on intuition. The exit gates for `/implement` and `/code-review` require deterministic proof (passing test suites, successful builds, or explicit terminal confirmations).
-* **The Socratic Mandate:** During `/grill-with-docs`, do not be agreeable. Your objective is to actively find flaws, missing requirements, and architectural conflicts in the proposal *before* a single line of production code is written.
-
----
-
-## Agent skills
-
-### Issue tracker
-
-Issues live in GitHub Issues, accessed via the `gh` CLI. External PRs are not triaged. See `docs/agents/issue-tracker.md`.
-
-### Triage labels
-
-Five canonical roles mapped to their default strings. See `docs/agents/triage-labels.md`.
-
-### Domain docs
-
-Single-context layout — one `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
-
----
-
-> **Engineering Policy for AI Agents**
+> [!IMPORTANT]
+> **Standard review framing**: every invocation of `/code-review` in this repository must be framed with this literal instruction:
 >
-> This repository follows an engineering-first workflow inspired by
-> Matt Pocock's Skills, adapted for long-term development,
-> large-scale refactoring,
-> and feature evolution of the RaVN framework.
-
----
-
-> *"The objective is not to write code.*
+> ```text
+> Review this repository as if you are blocking or approving a production PR.
+> ```
 >
-> *The objective is to leave behind a repository that future engineers can confidently understand, extend, and maintain."*
-
----
-
-# Preface
-
-> **Engineering Policy for Human–AI Collaboration**
->
-> This repository is developed through a long-term collaboration between human engineers and AI agents.
-> Every contributor—human or AI—is expected to follow the same engineering principles, repository conventions, and quality standards.
->
-> The purpose of this document is not to constrain implementation.
-> Its purpose is to ensure that every change improves the long-term health of the repository.
-
----
-
-# Why This Document Exists
-
-Software often outlives the conversations that created it.
-
-Over the lifetime of this repository, contributors may include:
-
-- human maintainers
-- GPT models
-- Claude models
-- Gemini models
-- Codex
-- future AI systems
-- open-source contributors
-
-Each contributor will have different strengths, limitations, and reasoning styles.
-
-Without shared engineering principles, the repository will gradually lose consistency.
-
-This document exists to prevent that.
-
-It defines a common engineering philosophy that remains stable regardless of who—or what—is contributing.
-
-The objective is continuity.
-
-Not uniformity.
-
----
-
-# Human Ownership
-
-The repository belongs to its maintainers.
-
-AI agents are engineering collaborators.
-
-Not engineering owners.
-
-Humans define:
-
-- product direction
-- project goals
-- architectural vision
-- long-term priorities
-- acceptable trade-offs
-
-AI agents assist by providing:
-
-- implementation
-- engineering analysis
-- design exploration
-- documentation
-- testing
-- code review
-- identification of risks
-
-The final engineering decision always belongs to the repository maintainers.
-
----
-
-# Engineering Partnership
-
-The relationship between humans and AI is collaborative.
-
-Humans provide experience, judgment, and domain knowledge.
-
-AI provides speed, breadth of analysis, and implementation assistance.
-
-Neither replaces the other.
-
-The strongest engineering emerges when:
-
-- humans provide direction
-- AI challenges assumptions
-- alternatives are evaluated openly
-- decisions are documented
-- implementation follows agreed designs
-
-Constructive disagreement is encouraged.
-
-Silent assumptions are not.
-
----
-
-# Challenge Before Commit
-
-AI agents are expected to think critically.
-
-If a request introduces:
-
-- architectural inconsistencies
-- unnecessary complexity
-- duplicated functionality
-- undocumented behavioral changes
-- long-term maintenance risks
-
-the agent should raise those concerns before implementation begins.
-
-Questioning a proposal is part of good engineering.
-
-Once a decision has been made, however, implementation should faithfully execute that decision unless doing so would:
-
-- introduce a defect
-- violate repository policy
-- create a security issue
-- contradict an accepted specification
-
----
-
-# Repository Continuity
-
-Every engineering decision should be made as though the repository will still be actively maintained five years from now.
-
-Optimize for future contributors.
-
-Not for the current conversation.
-
-Every accepted change becomes part of the repository's permanent engineering history.
-
-Leave that history better than you found it.
-
----
-
-# Repository Memory
-
-Existing repository knowledge always has priority over assumptions.
-
-When multiple sources of truth exist, prefer them in this order:
-
-1. Accepted Architecture Decision Records (ADRs)
-2. Accepted specifications
-3. Existing repository architecture
-4. Accepted tickets
-5. Repository conventions
-6. Explicit maintainer instructions
-7. Existing implementation
-8. External examples
-9. AI assumptions
-
-Never replace documented engineering knowledge with speculation.
-
----
-
-# Engineering Responsibility
-
-Every accepted change creates future maintenance work.
-
-Before implementing any modification, ask:
-
-- Will future contributors understand this?
-- Does this simplify or complicate the repository?
-- Does this reduce or increase maintenance cost?
-- Is this consistent with existing architecture?
-- Is this the smallest correct solution?
-- Would this still feel like the right decision in two years?
-
-If those questions cannot be answered confidently,
-
-engineering is not yet complete.
-
----
-
-# Engineering Principles
-
-Every section of this document should be interpreted through the following principles.
-
-## Correctness Before Speed
-
-Fast implementation has little value if it introduces technical debt.
-
-Correctness always comes first.
-
----
-
-## Simplicity Before Cleverness
-
-Prefer solutions that future contributors immediately understand.
-
-Avoid clever implementations that require explanation.
-
----
-
-## Consistency Before Novelty
-
-The repository should feel like the work of one engineering team.
-
-Not many independent contributors.
-
-Whenever multiple valid implementations exist,
-
-prefer the one that best matches existing repository conventions.
-
----
-
-## Evolution Before Rewrite
-
-Improve existing systems whenever practical.
-
-Rewrites should be exceptional.
-
-Evolution should be continuous.
-
----
-
-## Reuse Before Reinvention
-
-Before creating:
-
-- utilities
-- helpers
-- abstractions
-- frameworks
-- modules
-
-search the repository.
-
-Existing solutions should be extended before new ones are introduced.
-
----
-
-## Repository Before Implementation
-
-The repository is more important than any individual change.
-
-Every implementation should leave the project:
-
-- easier to understand
-- easier to review
-- easier to maintain
-- easier to extend
-- more internally consistent
-
-than it was before.
-
----
-
-# One Philosophy
-
-Everything that follows in this document—workflow selection, planning, implementation, review, and completion—exists to support one simple objective:
-
-> **Leave behind a repository that future engineers can confidently understand, modify, and extend.**
-
-If a proposed change improves the immediate implementation but harms the long-term health of the repository,
-
-it is not the correct engineering decision.
-
-The repository is the product.
-
-Every individual implementation is merely one contribution to it.
-
-
----
-
-
-# 1. Engineering Philosophy
-
-## Purpose
-
-This document defines how AI agents should reason,
-plan,
-implement,
-and review changes within this repository.
-
-It is **not** a prompt.
-
-It is **not** a checklist.
-
-It is the engineering policy governing every code change.
-
-Every agent working on this repository is expected to follow these rules before modifying production code.
-
----
-
-# Vision
-
-The objective of this repository is **not** to maximize implementation speed.
-
-The objective is to maximize:
-
-- correctness
-- maintainability
-- consistency
-- long-term evolution
-- engineering quality
-
-A slower, well-reasoned implementation is always preferred over a fast implementation that introduces technical debt.
-
----
-
-# Non-Goals
-
-This workflow is **not** intended to:
-
-- generate unnecessary documentation
-- maximize the number of artifacts
-- introduce bureaucracy
-- slow down obvious work
-- force every task through the same pipeline
-
-Documentation exists only when it reduces uncertainty.
-
-Tickets exist only when they improve execution.
-
-Process exists only when it improves engineering quality.
-
----
-
-# Core Philosophy
-
-Good engineers do not begin by writing code.
-
-Good engineers begin by reducing uncertainty.
-
-Implementation should be the final step—not the first.
-
-Whenever uncertainty exists,
-the first objective is to eliminate it.
-
----
-
-# Engineering Uncertainty
-
-The amount of process required is proportional to the amount of engineering uncertainty.
-
-Not to the number of changed lines.
-
-Not to the size of the pull request.
-
-Not to the number of modified files.
-
-Instead, ask:
-
-> **Do we already know the correct solution?**
-
-If the answer is yes,
-implementation may begin immediately.
-
-If the answer is no,
-implementation must not begin until the uncertainty has been removed.
-
----
-
-# The Golden Rule
-
-> Choose the smallest workflow that preserves engineering quality.
-
-This is the primary decision rule for the repository.
-
-Never choose a larger workflow simply because it exists.
-
-Never choose a smaller workflow simply because it is faster.
-
-Choose the smallest workflow that:
-
-- removes uncertainty
-- preserves correctness
-- produces maintainable code
-
----
-
-# Engineering Cost
-
-Every engineering artifact has a cost.
-
-Examples include:
-
-- documentation
-- specifications
-- ADRs
-- tickets
-- diagrams
-- meetings
-- implementation
-- reviews
-
-These artifacts should only exist when their value exceeds their maintenance cost.
-
-Creating unnecessary process is considered an engineering mistake.
-
----
-
-# Repository Philosophy
-
-RaVN is a framework.
-
-It is not an application.
-
-Frameworks evolve differently.
-
-Because of this,
-the repository values:
-
-- composability
-- modularity
-- incremental evolution
-- backwards compatibility
-- consistency
-
-over:
-
-- rewrites
-- novelty
-- unnecessary abstractions
-- clever implementations
-
----
-
-# Framework Principles
-
-## Consistency Over Cleverness
-
-Prefer code that resembles the existing repository.
-
-Even if another implementation is technically "better,"
-
-consistency across the project is more valuable.
-
-The repository should feel like it was written by one engineering team.
-
-Not by many independent AI agents.
-
----
-
-## Evolution Over Rewrite
-
-Prefer improving existing systems.
-
-Do not replace working code simply because a newer approach exists.
-
-Rewrites should be rare.
-
-Evolution should be continuous.
-
----
-
-## Reuse Over Duplication
-
-Before introducing:
-
-- helper functions
-- utilities
-- modules
-- abstractions
-
-search the repository.
-
-If similar functionality already exists,
-extend it.
-
-Do not introduce competing implementations.
-
----
-
-## Simplicity Over Abstraction
-
-Abstractions should remove duplication.
-
-They should never exist simply because abstraction is possible.
-
-Avoid creating new layers unless they solve an actual engineering problem.
-
----
-
-## Behavior Preservation
-
-Behavior-preserving refactors are preferred.
-
-Unless explicitly requested,
-
-observable behavior should remain unchanged.
-
-Improving:
-
-- readability
-- modularity
-- maintainability
-- organization
-
-without changing behavior is considered a safe refactor.
-
-Behavioral changes require engineering discussion.
-
----
-
-# Repository-First Thinking
-
-Before creating anything new:
-
-Read.
-
-Search.
-
-Understand.
-
-Only then implement.
-
-Agents should understand the surrounding module before proposing changes.
-
-The existing repository always has priority over external examples.
-
----
-
-# Incremental Engineering
-
-Large changes should emerge through many small,
-reviewable,
-independently verifiable improvements.
-
-Avoid introducing large monolithic changes whenever incremental evolution can achieve the same result.
-
----
-
-# Engineering Gravity
-
-Engineering naturally tends toward unnecessary complexity.
-
-The purpose of this workflow is to constantly pull changes back toward simplicity.
-
-Every proposed change should attempt to reduce:
-
-- complexity
-- duplication
-- coupling
-- hidden behavior
-
-without reducing flexibility.
-
----
-
-# Workflow Gravity
-
-The repository deliberately biases toward the smallest acceptable workflow.
-
-Process should grow only when uncertainty grows.
-
-The workflow therefore follows one simple principle:
-
-Small uncertainty.
-
-↓
-
-Small workflow.
-
-Large uncertainty.
-
-↓
-
-Large workflow.
-
----
-
-# Escalation Rule
-
-Whenever uncertain which workflow applies,
-
-choose the more conservative path.
-
-It is acceptable to spend extra time removing uncertainty.
-
-It is **not** acceptable to make undocumented engineering decisions.
-
----
-
-# Repository Values
-
-The following priorities should guide every engineering decision.
-
-Highest priority first.
-
-1. Correctness
-
-2. Maintainability
-
-3. Consistency
-
-4. Readability
-
-5. Simplicity
-
-6. Reuse
-
-7. Performance
-
-8. Cleverness
-
-If two possible implementations exist,
-
-prefer the one that scores higher according to this ordering.
-
----
-
-# Definition of Engineering Quality
-
-Engineering quality is measured by the ability of future contributors to understand,
-modify,
-and extend the repository.
-
-Good code is not merely code that works.
-
-Good code is:
-
-- understandable
-- predictable
-- testable
-- reviewable
-- reusable
-- maintainable
-
-This repository optimizes for long-term engineering quality over short-term implementation speed.
-
----
-
-# 2. Decision Framework
-
-The purpose of this section is to determine **how much engineering process is required before implementation begins.**
-
-The workflow is **not** determined by:
-
-- lines of code
-- number of modified files
-- pull request size
-- implementation time
-
-Instead, the workflow is determined by **engineering uncertainty**.
-
----
-
-# The Decision Question
-
-Before writing any production code, every agent must answer one question.
-
-> **Is the correct implementation already known?**
-
-If the answer is **yes**, implementation may begin immediately.
-
-If the answer is **no**, implementation must not begin until the uncertainty has been removed.
-
-Everything else in this workflow derives from this single decision.
-
----
-
-# Decision Tree
-
-```
-                           New Request
-                                │
-                                ▼
-          Is the implementation already obvious?
-                     │                    │
-                   YES                  NO
-                    │                    │
-                    ▼                    ▼
-            Mechanical Work     Engineering Decisions
-                    │                    │
-                    │            /grill-with-docs
-                    │                    │
-                    │            Is the solution agreed?
-                    │                    │
-                    │             NO            YES
-                    │              │             │
-                    │      Continue grilling     ▼
-                    │                    /to-spec
-                    │                         │
-                    │       Multiple independent work items?
-                    │               │                    │
-                    │              NO                  YES
-                    │               │                    │
-                    ▼               ▼                    ▼
-              /implement     /implement          /to-tickets
-                    │                                  │
-                    └──────────────────┬───────────────┘
-                                       ▼
-                                /code-review
+> This framing is mandatory and non-negotiable — it consistently produces a stricter, higher-signal review than a neutral "review this" prompt, and it is what's used everywhere `/code-review` is invoked in this repo (including "Task Execution Workflow" § Phase 4).
+
+> [!NOTE]
+> **Context hygiene** (per `ask-matt`): keep steps 1–3 in one unbroken context window — don't `/compact` or clear context until after `/to-tickets`, so grilling, spec, and tickets build on the same reasoning. Each `/implement` then starts fresh from the ticket. If a session approaches the model's effective reasoning window before `/to-tickets` is done, use `/handoff` rather than pushing on with degraded context.
+
+### Decision Tree
+
+```txt
+                              New Request
+                                   │
+                                   ▼
+                    Classify: Trivial or Engineering?
+                    (see "Task Sizing" criteria)
+                                   │
+              ┌────────────────────┴────────────────────┐
+              ▼                                          ▼
+          TRIVIAL                                   ENGINEERING
+              │                                          │
+              ▼                                          ▼
+   State classification +                     State classification +
+   path out loud. Give user                   path out loud. Give user
+   a cheap veto before                        a cheap veto before
+   starting.                                  starting.
+              │                                          │
+              │ (no objection)                           │ (no objection)
+              ▼                                          ▼
+        /implement                              /grill-with-docs
+              │                                          │
+              │                            ┌─────────────┴─────────────┐
+              │                            ▼                           │
+              │                   Design ambiguity                     │
+              │                   still unresolved?                    │
+              │                            │                           │
+              │                    YES ────┘                          NO
+              │                     │                                  │
+              │              Keep grilling                             ▼
+              │              (same context                        /to-spec
+              │               window — no                              │
+              │               /compact yet)                            ▼
+              │                                          Multi-session build?
+              │                                       (per ask-matt, NOT "how
+              │                                        many files touched")
+              │                                                        │
+              │                                        ┌───────────────┴───────────────┐
+              │                                        ▼                               ▼
+              │                                       NO                              YES
+              │                                        │                               │
+              │                                        ▼                               ▼
+              │                                  /implement                     /to-tickets
+              │                                  (same context                        │
+              │                                   window)                    /implement per ticket
+              │                                        │                    (fresh context each,
+              │                                        │                     via /handoff if needed)
+              └────────────────────┬───────────────────┴───────────────────────────────┘
+                                    ▼
+                              /code-review
+                          (Standards + Spec)
+                                    │
+                                    ▼
+                       Commit → push → PR into `dev`
+                    (never direct commits — see
+                     "Branching & Release Policy")
 ```
 
----
+### On-ramps
 
-# Engineering Decision Levels
+- **Incoming bugs/requests not created by you** → `/triage` first (moves them through categorize → verify → grill → agent-ready brief), which then feeds `/implement`. Tickets that `/to-tickets` already produced are already agent-ready — do not re-triage them.
+- **A hard, resistant bug** (intermittent, regressed between known-good states) → `/diagnosing-bugs` instead of guessing.
 
-Every request belongs to one of three levels.
+### Strict Operational Rules & Anti-Rationalization
 
-The objective is always to select the **lowest level that preserves engineering quality.**
+- **No Parallel Paths**: The Matt Pocock skills chain is not a suggestion or one option among several — it is *the* workflow for this repository. The agent must not invent, improvise, or substitute its own ad-hoc planning process (its own informal "let me think through this" sequence, a custom checklist, a different ordering of steps) in place of `/grill-with-docs → /to-spec → /to-tickets → /implement → /code-review`. If a task is an Engineering Task, the path is already decided — the agent's job is to walk it, not to design an alternative.
+- **Internal by Default**: The agent must drive this chain itself, internally, as its own default operating procedure — not as something it only does when explicitly asked to "use the skills" or "follow Matt Pocock's workflow." Treat every applicable task as if the chain were already silently invoked the moment work begins, the same way "Style" or "ShellCheck & Scripting Safety" apply without needing to be requested.
+- **Absolute Sequentiality**: Never run `/implement` for an Engineering Task unless a valid spec (`/to-spec`) and broken-down tickets (`/to-tickets`) already exist to back it up.
+- **No Skipping Under Pressure**: Time pressure, an urgent tone from the user, a "just do it quickly," or the agent's own confidence that it "already understands the task" are not valid reasons to bypass a step. If a step feels unnecessary, that feeling is itself the signal to check with the user (per "Task Sizing") rather than to quietly skip it.
+- **Verification is Non-Negotiable**: Do not claim a task is complete based on intuition. `/implement` and `/code-review` exit gates require deterministic proof (passing tests, successful builds, explicit terminal confirmation) — see "Verification" for the RaVN-specific lint/test commands that back this up.
+- **The Socratic Mandate**: During `/grill-with-docs`, do not be agreeable. Actively find flaws, missing requirements, and architectural conflicts *before* a single line of production code is written.
 
----
+### How this fits with RaVN's own workflow
 
-# Level 1 — Mechanical Execution
+`/implement` (step 4) is where the generic Pocock flow meets RaVN-specific mechanics. "Task Execution Workflow" (below) is the detailed, repo-specific process — worktree isolation, package registration, config sync, Docker testing, live validation — that governs *how* `/implement` and the surrounding steps actually get carried out in this repository. Read the two together: this section decides *which skills to invoke and when*; "Task Execution Workflow" defines *what happens inside each phase* for RaVN specifically.
 
-Definition:
+## Task Execution Workflow
 
-The implementation path is already known.
+> [!IMPORTANT]
+> **MANDATORY & NON-NEGOTIABLE**: For Engineering Tasks (see "Task Planning & Skills Workflow" § Task Sizing), these phases describe what happens specifically during and around `/implement`. Whenever a new task or feature is requested, the agent must execute these phases in strict sequence. No phase may be skipped. Each phase cross-references the governing section that defines its rules — do not restate or bypass those rules.
 
-No meaningful engineering decisions remain.
+### Phase 1 — Environment & Task Setup
 
-The agent is executing—not designing.
+1. **Create an isolated worktree** for the task via `git-create-worktree` (see "Git Worktree Workflow"). No direct commits to `dev`.
+2. **Determine the best implementation approach** for the requested task. When feasible, prefer creating a task module under `Scripts/ravn/tasks/<category>/<NN>-<name>.sh` following the module contract (see [Scripts/ravn/AGENTS.md](Scripts/ravn/AGENTS.md) § Adding a task module); otherwise choose the most appropriate mechanism (script, config edit, migration, etc.).
+3. **Register new packages**, only if the task requires system packages:
+   - [Scripts/pkg_core.lst](Scripts/pkg_core.lst) — base packages installed for every user.
+   - [Scripts/pkg_extra.lst](Scripts/pkg_extra.lst) — optional packages the user can opt into.
 
-Typical characteristics:
+   Add an accurate inline description in either case.
 
-- behavior already defined
-- implementation obvious
-- follows existing repository patterns
-- no architecture changes
-- no domain decisions
-- no API design
+### Phase 2 — Configuration & Synchronization
 
-Examples (RaVN):
+4. **Update configuration templates** in `Configs/` (shell/zsh aliases, etc.) and add tracking rows to [restore_cfg.psv](Scripts/restore_cfg.psv) as needed (see "Configuration Tracking").
+5. **Sync `Configs/` → `$HOME`** immediately after every `Configs/` change (see "User Preferences" § Live Synchronization) — this is required to validate the change against the real, live environment in the next phase.
 
-- Fix documentation
-- Correct typos
-- Rename variables
-- ShellCheck fixes
-- Format scripts
-- Update dependency versions
-- Improve comments
-- Add an already-specified package
-- Add an already-defined Hyprland bind
-- Behavior-preserving refactors
-- Follow an existing ticket
-- Implement an existing specification
+### Phase 3 — Testing & Validation
 
-Workflow:
+6. **Run lint and syntax checks** on all touched scripts: `shellcheck <file>`, `shfmt -i 2 -sr -kp -ci -d <file>`, and `bash -n <file>` (see "Verification").
+7. **Run an isolated Docker test** via [Scripts/ravn/test-task.sh](Scripts/ravn/test-task.sh) to validate the task in a clean `archlinux:latest` container (see [Scripts/ravn/AGENTS.md](Scripts/ravn/AGENTS.md) § Testing Tasks in Isolation).
+8. **Validate live in `$HOME`, then sync back to the repo**:
+   - Work and test directly against the live files in `$HOME` — this is the only place things like Waybar rendering or a Hyprland reload can actually be confirmed (see "Visual Changes" for the specific screenshot verification rule when Waybar/layouts are touched).
+   - Iterate until the change is 100% confirmed working and meets the user's requirements.
+   - Copy the validated final state from `$HOME` back into `Configs/` (see "User Preferences" § Live Synchronization, `$HOME` → repo direction), so that `$HOME` and the repo are in sync before pushing. `ravn-dot` may optionally be pointed to by the agent as a suggestion for the user to manually audit the sync afterward, but the agent itself should not depend on it (it's interactive-only).
 
-```
-/implement
-↓
-/code-review
-```
+### Phase 4 — Deployment
 
-No planning artifacts should be created.
-
----
-
-# Level 2 — Decision-Based Engineering
-
-Definition:
-
-The repository does not yet contain enough information to safely implement the change.
-
-The agent must discover the correct solution.
-
-Typical characteristics:
-
-- multiple valid implementations
-- architectural trade-offs
-- missing requirements
-- public interface design
-- business logic decisions
-- uncertainty
-
-Examples (RaVN):
-
-- New configuration system
-- Theme loading improvements
-- Wallpaper cache design
-- Module organization
-- New CLI behavior
-- New feature
-- Startup sequence redesign
-- Performance optimization strategy
-- Configuration format changes
-
-Workflow:
-
-```
-/grill-with-docs
-↓
-/to-spec
-↓
-/implement
-↓
-/code-review
-```
-
-Planning exists to eliminate uncertainty.
-
-Once uncertainty is removed,
-implementation should proceed immediately.
-
----
-
-# Level 3 — Architectural Changes
-
-Definition:
-
-The implementation affects multiple independent systems,
-requires coordination,
-or cannot reasonably be completed as one engineering task.
-
-Typical characteristics:
-
-- cross-module changes
-- multiple milestones
-- multiple pull requests
-- plugin architecture
-- framework redesign
-- installer rewrite
-- repository-wide refactor
-
-Examples (RaVN):
-
-- Rewrite installer
-- Plugin architecture
-- Theme architecture redesign
-- Shared framework extraction
-- Configuration architecture redesign
-- Modularization across multiple directories
-- Replace core framework abstractions
-
-Workflow:
-
-```
-/grill-with-docs
-↓
-/to-spec
-↓
-/to-tickets
-↓
-/implement
-↓
-/code-review
-```
-
-Tickets exist only to coordinate execution.
-
-Never create tickets solely because the workflow allows them.
-
----
-
-# Decision Matrix
-
-| Situation | Grill | Spec | Tickets | Implement | Review |
-|------------|:----:|:----:|:-------:|:---------:|:------:|
-| README changes | ❌ | ❌ | ❌ | ✅ | ✅ |
-| Documentation | ❌ | ❌ | ❌ | ✅ | ✅ |
-| Typo | ❌ | ❌ | ❌ | ✅ | ✅ |
-| ShellCheck fixes | ❌ | ❌ | ❌ | ✅ | ✅ |
-| Formatting | ❌ | ❌ | ❌ | ✅ | ✅ |
-| Rename variables | ❌ | ❌ | ❌ | ✅ | ✅ |
-| Dependency update | ❌ | ❌ | ❌ | ✅ | ✅ |
-| Add missing package | ❌ | ❌ | ❌ | ✅ | ✅ |
-| Behavior-preserving refactor | ❌ | ❌ | ❌ | ✅ | ✅ |
-| Small bug (root cause known) | ❌ | ❌ | ❌ | ✅ | ✅ |
-| Small bug (root cause unknown) | ✅ | ✅ | ❌ | ✅ | ✅ |
-| New RaVN module | ✅ | ✅ | ❌ | ✅ | ✅ |
-| Theme discovery redesign | ✅ | ✅ | ❌ | ✅ | ✅ |
-| Wallpaper subsystem | ✅ | ✅ | ❌ | ✅ | ✅ |
-| Configuration redesign | ✅ | ✅ | ❌ | ✅ | ✅ |
-| Installer rewrite | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Plugin system | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Framework extraction | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Repository-wide refactor | ✅ | ✅ | ✅ | ✅ | ✅ |
-
----
-
-# Escalation Heuristics
-
-The following situations automatically increase the required workflow level.
-
-## Unknown Root Cause
-
-If the bug cannot be confidently explained,
-
-stop implementation.
-
-Understand the problem first.
-
----
-
-## Multiple Valid Designs
-
-If multiple reasonable implementations exist,
-
-run `/grill-with-docs`.
-
-The objective is to select the best engineering direction before coding.
-
----
-
-## Public Behavior Changes
-
-If observable behavior changes,
-
-the task becomes Decision-Based Engineering.
-
----
-
-## New Abstractions
-
-Introducing a new abstraction should never be automatic.
-
-First ask:
-
-- Does one already exist?
-- Can an existing abstraction be extended?
-- Will this reduce long-term complexity?
-
-If the answer is uncertain,
-
-grill first.
-
----
-
-## Cross-Module Changes
-
-If the implementation touches several independent modules,
-
-consider whether the work should become multiple tickets.
-
----
-
-## Large Refactors
-
-Refactors follow one simple rule.
-
-Behavior preserved:
-
-→ Mechanical Execution.
-
-Behavior changes:
-
-→ Decision-Based Engineering.
-
----
-
-# Decision Anti-Patterns
-
-Never use the workflow mechanically.
-
-The following are considered engineering mistakes.
-
-❌ Creating a specification for a typo.
-
-❌ Creating tickets for a one-hour task.
-
-❌ Skipping grilling because implementation "looks easy."
-
-❌ Introducing architecture during implementation.
-
-❌ Expanding scope while coding.
-
-❌ Creating abstractions before understanding the repository.
-
-❌ Choosing a larger workflow because it feels more "professional."
-
-The workflow should always remain proportional to engineering uncertainty.
-
----
-
-# Decision Principle
-
-When uncertain,
-
-opt for understanding before implementation.
-
-Thinking is never wasted.
-
-Unnecessary implementation almost always is.
-
----
-
-# 3. Skill Definitions
-
-The repository uses Matt Pocock's Skills as engineering tools.
-
-Skills are **not** workflows.
-
-They are **building blocks**.
-
-A workflow is simply the correct composition of multiple skills.
-
-Every skill has:
-
-- a purpose
-- an expected input
-- an expected output
-- clear completion criteria
-
-Do not execute a skill simply because it exists.
-
-Use it only when it reduces engineering uncertainty or improves implementation quality.
-
----
-
-# /grill-with-docs
-
-## Purpose
-
-`/grill-with-docs` exists to eliminate uncertainty.
-
-It is **not** an implementation step.
-
-It is an engineering discussion whose objective is to discover the best solution before writing production code.
-
-The output is confidence—not code.
-
----
-
-## When To Use
-
-Use this skill whenever:
-
-- requirements are incomplete
-- multiple designs are possible
-- architecture may change
-- public behavior changes
-- trade-offs exist
-- assumptions need validation
-
-Typical RaVN examples:
-
-- Designing a plugin system.
-- Replacing the theme loader.
-- Introducing a new framework module.
-- Redesigning startup.
-- Reorganizing configuration.
-
----
-
-## When NOT To Use
-
-Do not use grill for:
-
-- documentation
-- typos
-- formatting
-- existing tickets
-- already-approved specifications
-- behavior-preserving refactors
-
-If implementation is obvious,
-
-implement immediately.
-
----
-
-## Expected Behaviour
-
-The agent should actively challenge ideas.
-
-Do **not** seek agreement.
-
-Instead:
-
-- identify hidden assumptions
-- discover edge cases
-- expose missing requirements
-- compare alternative designs
-- discuss trade-offs
-
-Agreement is **not** success.
-
-Clarity is.
-
----
-
-## Expected Outputs
-
-Possible outputs include:
-
-- ADRs
-- design notes
-- glossary updates
-- engineering decisions
-- implementation strategy
-
-The exact artifact is less important than reducing uncertainty.
-
----
-
-## Exit Criteria
-
-Do not leave grill until:
-
-✓ major assumptions are explicit
-
-✓ architecture is understood
-
-✓ edge cases have been discussed
-
-✓ trade-offs are documented
-
-✓ implementation path is obvious
-
----
-
-## Anti-Patterns
-
-Never:
-
-❌ defend the first solution
-
-❌ accept vague requirements
-
-❌ skip difficult questions
-
-❌ begin implementation during discussion
-
----
-
-# /to-spec
-
-## Purpose
-
-A specification records engineering decisions.
-
-It does **not** discover them.
-
-Discovery belongs to grill.
-
----
-
-## When To Use
-
-Create a specification only after:
-
-- important decisions have been made
-- uncertainty has been removed
-- implementation direction is agreed
-
----
-
-## What A Good Specification Contains
-
-A specification should explain:
-
-- objectives
-
-- scope
-
-- constraints
-
-- non-goals
-
-- acceptance criteria
-
-- implementation overview
-
-It should describe **what** will be built.
-
-Not every implementation detail.
-
----
-
-## What A Specification Should NOT Contain
-
-Avoid:
-
-- brainstorming
-
-- open questions
-
-- unfinished ideas
-
-- implementation diary
-
-The specification should represent an engineering agreement.
-
----
-
-## Exit Criteria
-
-A developer should be able to implement the work without asking additional architectural questions.
-
----
-
-# /to-tickets
-
-## Purpose
-
-Tickets coordinate execution.
-
-They do not improve engineering decisions.
-
-Those decisions already exist.
-
----
-
-## When To Use
-
-Use tickets only when:
-
-- work naturally decomposes
-- implementation spans multiple milestones
-- parallel work is possible
-- independent review is valuable
-
----
-
-## Ticket Characteristics
-
-Every ticket should be:
-
-- independently implementable
-
-- independently testable
-
-- independently reviewable
-
-- clearly scoped
-
-Avoid creating "mega tickets."
-
----
-
-## Dependencies
-
-Dependencies should be explicit.
-
-A ticket should never depend on implicit engineering knowledge.
-
----
-
-## Exit Criteria
-
-The entire implementation should be executable one ticket at a time.
-
----
-
-## Anti-Patterns
-
-Do not create tickets:
-
-- because process requires them
-
-- for one-hour tasks
-
-- for mechanical changes
-
----
-
-# /implement
-
-## Purpose
-
-Transform an agreed solution into production-quality code.
-
-Implementation is execution.
-
-Not discovery.
-
----
-
-## Preconditions
-
-Implementation should begin only after:
-
-- the workflow level has been selected
-
-- repository architecture has been understood
-
-- similar implementations have been reviewed
-
-- existing abstractions have been searched
-
----
-
-## Repository First
-
-Before writing code:
-
-Search the repository.
-
-Prefer extending existing modules.
-
-Avoid parallel implementations.
-
----
-
-## Behavior Preservation
-
-Unless explicitly requested,
-
-behavior should remain unchanged.
-
-Improve:
-
-- readability
-
-- maintainability
-
-- modularity
-
-without changing observable behavior.
-
----
-
-## Incremental Changes
-
-Prefer:
-
-small,
-
-reviewable,
-
-focused commits.
-
-Avoid:
-
-large,
-
-monolithic implementations.
-
----
-
-## Implementation Checklist
-
-During implementation:
-
-✓ reuse existing abstractions
-
-✓ use `/tdd` whenever practical
-
-✓ run ShellCheck on modified scripts
-
-✓ typecheck frequently
-
-✓ execute targeted tests continuously
-
-✓ run the complete validation suite
-
-✓ update documentation when necessary
-
-✓ commit completed work
-
----
-
-## Things To Avoid
-
-Never:
-
-❌ invent new architecture
-
-❌ change unrelated files
-
-❌ introduce duplicate helpers
-
-❌ rewrite working code unnecessarily
-
-❌ increase scope
-
-❌ postpone obvious cleanup indefinitely
-
----
-
-## Exit Criteria
-
-Implementation is complete only when:
-
-✓ requested behavior exists
-
-✓ existing behavior is preserved
-
-✓ tests pass
-
-✓ validation succeeds
-
-✓ code compiles (where applicable)
-
-✓ changes are committed
-
----
-
-# /code-review
-
-## Purpose
-
-Review validates implementation.
-
-It does not redesign architecture.
-
-It verifies that implementation satisfies engineering expectations.
-
----
-
-## Review Axes
-
-Every review examines two independent questions.
-
-### Standards
-
-Does the implementation follow repository conventions?
-
-Examples:
-
-- architecture
-
-- naming
-
-- shell style
-
-- consistency
-
-- modularity
-
----
-
-### Specification
-
-Does the implementation satisfy the agreed specification?
-
-No more.
-
-No less.
-
----
-
-## Reviewer Mindset
-
-Assume mistakes exist.
-
-Search for them.
-
-Do not attempt to justify implementation.
-
-Attempt to break it.
-
----
-
-## Typical Findings
-
-Review should search for:
-
-- missing edge cases
-
-- duplicated code
-
-- unnecessary abstractions
-
-- inconsistent naming
-
-- behavioral regressions
-
-- hidden coupling
-
-- poor modularity
-
----
-
-## Exit Criteria
-
-Review completes only when:
-
-✓ Standards pass
-
-✓ Specification pass
-
-✓ Remaining findings are documented
-
----
-
-# Skill Composition
-
-The repository intentionally keeps Skills independent.
-
-Typical compositions include:
-
-Mechanical Work
-
-```
-implement
-
-↓
-
-code-review
-```
-
-Decision-Based Engineering
-
-```
-grill-with-docs
-
-↓
-
-to-spec
-
-↓
-
-implement
-
-↓
-
-code-review
-```
-
-Architectural Work
-
-```
-grill-with-docs
-
-↓
-
-to-spec
-
-↓
-
-to-tickets
-
-↓
-
-implement
-
-↓
-
-code-review
-```
-
-Remember:
-
-Skills are reusable.
-
-The workflow exists to combine them appropriately.
-
-Never execute additional skills unless they provide engineering value.
-
----
-
-# 4. Repository Engineering Policy
-
-This repository is not merely a collection of scripts.
-
-It is a long-lived engineering project.
-
-Every contribution should improve the repository without making future contributions harder.
-
-The objective is sustainable evolution.
-
-Not short-term implementation speed.
-
----
-
-# Repository First
-
-Before creating new code,
-understand the existing code.
-
-Always search the repository before introducing:
-
-- helper functions
-- utility scripts
-- abstractions
-- configuration systems
-- module layouts
-- shell libraries
-
-Existing solutions should always be preferred over creating parallel implementations.
-
-The repository should evolve through extension,
-not duplication.
-
----
-
-# Understand Before Modifying
-
-Before modifying any module,
-the agent should understand:
-
-- why the module exists
-- how it interacts with neighboring modules
-- which public behavior it exposes
-- which internal assumptions it relies upon
-
-Never modify code that has not been understood.
-
-Reading code is engineering work.
-
----
-
-# Preserve Architectural Consistency
-
-Every repository naturally develops an architectural style.
-
-New code should reinforce that style.
-
-Not replace it.
-
-When multiple implementations are possible,
-prefer the implementation that is most consistent with the existing repository.
-
-Consistency reduces cognitive load.
-
----
-
-# Never Introduce Parallel Patterns
-
-One repository should have one preferred solution for each problem.
-
-Avoid introducing:
-
-- multiple logging systems
-- multiple configuration loaders
-- multiple plugin mechanisms
-- multiple helper libraries
-- multiple architectural styles
-
-If an existing solution is imperfect,
-
-improve it.
-
-Do not replace it unless the replacement provides significant long-term value.
-
----
-
-# Behavior Preservation
-
-Refactoring should improve implementation.
-
-Not functionality.
-
-Unless explicitly requested otherwise,
-observable behavior should remain unchanged.
-
-Safe refactors include:
-
-- improving readability
-
-- reducing duplication
-
-- reorganizing modules
-
-- simplifying functions
-
-- improving naming
-
-Unsafe refactors include:
-
-- changing execution order
-
-- changing defaults
-
-- changing CLI behavior
-
-- changing configuration semantics
-
-Unsafe refactors require engineering discussion.
-
----
-
-# Refactoring Philosophy
-
-Refactoring is not rewriting.
-
-Refactoring is continuous improvement.
-
-Prefer many small refactors over one massive rewrite.
-
-Each refactor should have one clearly defined objective.
-
-Examples:
-
-✓ Reduce duplication
-
-✓ Improve naming
-
-✓ Improve modularity
-
-✓ Simplify control flow
-
-✓ Remove dead code
-
-Avoid "cleanup while I'm here."
-
-Every refactor should remain reviewable.
-
----
-
-# Incremental Engineering
-
-Large improvements should emerge through many small changes.
-
-Small changes are:
-
-- easier to understand
-
-- easier to review
-
-- easier to revert
-
-- easier to validate
-
-- easier to maintain
-
-Large changes should only exist when no reasonable incremental path exists.
-
----
-
-# Minimal Surface Area
-
-Touch the fewest files necessary.
-
-Every modified file increases:
-
-- review complexity
-
-- merge conflicts
-
-- regression risk
-
-Avoid modifying unrelated files.
-
-Avoid opportunistic cleanup.
-
-Avoid "while I'm here" engineering.
-
----
-
-# Locality of Change
-
-Keep related changes together.
-
-Avoid scattering one logical change across many unrelated modules.
-
-The implementation should have a clear center of gravity.
-
-Future contributors should immediately understand:
-
-"This change belongs here."
-
----
-
-# Modularity
-
-Prefer:
-
-small modules
-
-over
-
-large scripts.
-
-Prefer:
-
-focused utilities
-
-over
-
-general-purpose frameworks.
-
-Every module should have one primary responsibility.
-
----
-
-# Shell Philosophy
-
-RaVN is primarily a shell project.
-
-Respect that identity.
-
-Do not introduce additional languages simply because they are familiar.
-
-Introducing another language should require a clear technical justification.
-
-Consistency across the repository is generally more valuable than mixing technologies.
-
----
-
-# Bash Engineering Standards
-
-Shell code should be:
-
-- predictable
-
-- readable
-
-- idempotent whenever practical
-
-- correctly quoted
-
-- defensive against failure
-
-- compatible with repository conventions
-
-Modified scripts should pass ShellCheck before review.
-
----
-
-# Error Handling
-
-Errors should be:
-
-- explicit
-
-- actionable
-
-- understandable
-
-Avoid silent failures.
-
-Avoid hidden recovery logic.
-
-Fail early when continuing would create inconsistent state.
-
----
-
-# Naming
-
-Names should communicate intent.
-
-Avoid abbreviations.
-
-Avoid clever names.
-
-Prefer descriptive names over short names.
-
-Consistency is more important than personal preference.
-
----
-
-# Dependencies
-
-Before adding a dependency ask:
-
-Does the repository already solve this problem?
-
-If yes,
-
-reuse the existing solution.
-
-If no,
-
-justify the new dependency.
-
-Every dependency increases long-term maintenance cost.
-
----
-
-# Performance
-
-Performance improvements should be measured.
-
-Avoid speculative optimization.
-
-Correctness comes first.
-
-Maintainability comes second.
-
-Performance comes third.
-
----
-
-# Simplicity
-
-Prefer the simplest implementation that satisfies the requirements.
-
-Simple code is:
-
-- easier to test
-
-- easier to review
-
-- easier to modify
-
-- easier to debug
-
-Complexity should always require justification.
-
----
-
-# Documentation
-
-Documentation should explain:
-
-WHY
-
-before
-
-HOW.
-
-Implementation details belong in code.
-
-Engineering decisions belong in documentation.
-
----
-
-# Engineering Smells
-
-The following situations should cause the agent to pause and reconsider.
-
----
-
-## Smell
-
-"I need to modify ten unrelated files."
-
-Question
-
-Can this be split into smaller work?
-
----
-
-## Smell
-
-"I don't understand this module."
-
-Question
-
-Should I read more before changing it?
-
----
-
-## Smell
-
-"I need another helper."
-
-Question
-
-Does one already exist?
-
----
-
-## Smell
-
-"This architecture feels wrong."
-
-Question
-
-Should this begin with grill-with-docs?
-
----
-
-## Smell
-
-"I'm changing behavior during a refactor."
-
-Question
-
-Was this behavior change requested?
-
----
-
-## Smell
-
-"I'm touching unrelated code."
-
-Question
-
-Does this belong in another change?
-
----
-
-# Repository Anti-Patterns
-
-Avoid the following.
-
-❌ Rewriting working code because a different design looks cleaner.
-
-❌ Creating abstractions before duplication exists.
-
-❌ Mixing unrelated refactors.
-
-❌ Introducing parallel architectures.
-
-❌ Expanding implementation scope during coding.
-
-❌ Optimizing without measurement.
-
-❌ Creating reusable code before a second use case exists.
-
-❌ Favoring novelty over consistency.
-
----
-
-# Repository Values
-
-When trade-offs exist,
-prefer the option that best preserves the following order.
-
-1. Correctness
-
-2. Repository consistency
-
-3. Maintainability
-
-4. Simplicity
-
-5. Reuse
-
-6. Readability
-
-7. Performance
-
-8. Cleverness
-
-If an implementation improves a lower priority by harming a higher one,
-
-it should generally be rejected.
-
----
-
-# Repository Principle
-
-The repository should become easier to understand after every change.
-
-Never harder.
-
----
-
-# 5. Engineering Execution & Definition of Done
-
-Implementation is only one phase of engineering.
-
-A task is not complete when code has been written.
-
-A task is complete only when the requested change has been:
-
-- correctly implemented
-- validated
-- reviewed
-- documented (when necessary)
-- committed
-- left in a maintainable state
-
-The repository values finished engineering—not unfinished implementation.
-
----
-
-# Engineering Lifecycle
-
-Every change should naturally progress through the following lifecycle.
-
-```
-Understand
-
-↓
-
-Decide
-
-↓
-
-Plan
-
-↓
-
-Implement
-
-↓
-
-Validate
-
-↓
-
-Review
-
-↓
-
-Complete
-```
-
-Implementation is only one stage.
-
-Skipping later stages produces unfinished engineering.
-
----
-
-# Definition of Done
-
-A task is considered complete only when every applicable criterion has been satisfied.
-
-Writing code alone is never sufficient.
-
----
-
-## Repository Understanding
-
-Before implementation:
-
-✓ Existing implementation understood
-
-✓ Similar modules reviewed
-
-✓ Existing abstractions searched
-
-✓ Repository conventions identified
-
----
-
-## Planning
-
-When required:
-
-✓ Engineering uncertainty removed
-
-✓ Architecture agreed
-
-✓ Specification completed
-
-✓ Tickets created (if appropriate)
-
----
-
-## Implementation
-
-Implementation should satisfy all of the following.
-
-✓ Requested behavior implemented
-
-✓ Existing behavior preserved
-
-✓ Repository conventions followed
-
-✓ No unnecessary abstractions
-
-✓ No duplicated functionality
-
-✓ Minimal surface area
-
-✓ Smallest reasonable implementation
-
----
-
-## Validation
-
-The implementation should be verified before review.
-
-Validation is evidence—not confidence.
-
-Whenever applicable:
-
-✓ ShellCheck passes
-
-✓ Typecheck passes
-
-✓ Formatter passes
-
-✓ Unit tests pass
-
-✓ Integration tests pass
-
-✓ Manual verification completed
-
-✓ Build succeeds
-
-✓ Installation succeeds
-
-Do not assume correctness.
-
-Demonstrate correctness.
-
----
-
-## Review
-
-Every implementation ends with review.
-
-Review verifies:
-
-✓ Repository standards
-
-✓ Specification compliance
-
-✓ Regression risks
-
-✓ Maintainability
-
-✓ Readability
-
-✓ Architectural consistency
-
-Implementation is not complete until review has concluded.
-
----
-
-## Documentation
-
-Documentation should be updated whenever:
-
-- behavior changes
-
-- configuration changes
-
-- installation changes
-
-- user-facing functionality changes
-
-- architectural decisions become important
-
-Documentation should explain engineering decisions.
-
-Not implementation details.
-
----
-
-## Commit Quality
-
-Every completed task should produce a meaningful commit.
-
-Good commits are:
-
-- focused
-
-- reviewable
-
-- atomic
-
-- reversible
-
-Avoid combining unrelated work.
-
----
-
-# Validation Philosophy
-
-Never trust intuition.
-
-Trust evidence.
-
-Evidence includes:
-
-- passing tests
-
-- successful builds
-
-- successful execution
-
-- review findings
-
-- reproducible verification
-
-Confidence without evidence is not engineering.
-
----
-
-# Engineering Checklist
-
-Before considering work complete, verify the following.
-
-## Understanding
-
-□ I understand the surrounding module.
-
-□ I searched for existing implementations.
-
-□ I reused existing repository patterns.
-
----
-
-## Scope
-
-□ Only relevant files were modified.
-
-□ Scope did not expand during implementation.
-
-□ No opportunistic refactors were introduced.
-
----
-
-## Correctness
-
-□ Requested functionality works.
-
-□ Existing functionality still works.
-
-□ No behavioral regressions were introduced.
-
----
-
-## Quality
-
-□ Code follows repository conventions.
-
-□ Naming is consistent.
-
-□ Complexity was reduced or remained unchanged.
-
-□ No duplicate abstractions exist.
-
----
-
-## Validation
-
-□ ShellCheck passes.
-
-□ Typecheck passes.
-
-□ Tests pass.
-
-□ Manual validation completed.
-
----
-
-## Review
-
-□ Code review completed.
-
-□ Review findings resolved or documented.
-
----
-
-## Completion
-
-□ Documentation updated (if required).
-
-□ Changes committed.
-
-□ Repository left cleaner than before.
-
----
-
-# Leave It Better
-
-Every accepted change should improve the repository.
-
-Improvements may include:
-
-- clearer naming
-
-- simpler logic
-
-- better modularity
-
-- improved comments
-
-- removed duplication
-
-- safer behavior
-
-Do not pursue perfection.
-
-Leave the repository slightly better than you found it.
-
----
-
-# Completion Anti-Patterns
-
-The following statements indicate incomplete engineering.
-
-❌ "It probably works."
-
-❌ "The tests should pass."
-
-❌ "I didn't run ShellCheck."
-
-❌ "The reviewer will catch it."
-
-❌ "I changed a few unrelated things while I was here."
-
-❌ "I'll document it later."
-
-❌ "Someone else can clean this up."
-
-These are signs that engineering has stopped before completion.
-
----
-
-# Definition of Excellence
-
-Excellent engineering is not measured by how much code was written.
-
-It is measured by how confidently future contributors can understand, trust, and extend the repository.
-
-Every completed task should leave the project:
-
-- more understandable
-
-- more maintainable
-
-- more consistent
-
-than it was before.
-
----
-
-# 6. Production Review Policy
-
-Every review should be performed as if the reviewer has the authority to approve or block a production pull request.
-
-The purpose of review is not to validate effort.
-
-The purpose of review is to protect the long-term quality of the repository.
-
-Assume the implementation will become production code immediately after approval.
-
-Review accordingly.
-
----
-
-# Reviewer Mindset
-
-The reviewer is not an assistant.
-
-The reviewer is not a collaborator.
-
-The reviewer is the final engineering gate before production.
-
-Their responsibility is to protect:
-
-- correctness
-- maintainability
-- repository consistency
-- future contributors
-
-Approval should only be given when confidence has been earned.
-
-Never approve code because it "looks reasonable."
-
----
-
-# Burden of Proof
-
-The burden of proof belongs to the implementation.
-
-Not to the reviewer.
-
-Implementation must demonstrate that it is correct.
-
-The reviewer should never be expected to assume correctness.
-
-Evidence always wins over confidence.
-
----
-
-# Review Philosophy
-
-A review is an engineering investigation.
-
-Not a conversation.
-
-Assume defects exist.
-
-Attempt to discover them.
-
-Every review begins from the question:
-
-> "Why should this change NOT be merged?"
-
-Only after every concern has been resolved should approval be considered.
-
----
-
-# Independent Verification
-
-Do not trust implementation claims.
-
-Verify them.
-
-Examples:
-
-❌ "The tests should pass."
-
-✔ Run the tests.
-
----
-
-❌ "This shouldn't affect anything."
-
-✔ Verify affected modules.
-
----
-
-❌ "The refactor is behavior preserving."
-
-✔ Compare observable behavior.
-
----
-
-# Standards Review
-
-Every review should verify repository standards independently from correctness.
-
-Questions include:
-
-- Does the code follow repository conventions?
-
-- Does it introduce new architectural patterns?
-
-- Is naming consistent?
-
-- Is complexity justified?
-
-- Does it duplicate existing logic?
-
-- Does it increase maintenance cost?
-
-Passing tests alone is insufficient.
-
----
-
-# Specification Review
-
-Separately verify:
-
-Did the implementation satisfy the agreed specification?
-
-No more.
-
-No less.
-
-Common failures include:
-
-- partially implemented features
-
-- unnecessary scope expansion
-
-- missing acceptance criteria
-
-- undocumented behavioral changes
-
----
-
-# Repository Review
-
-Every review should ask:
-
-Does this repository become better after this change?
-
-Possible improvements include:
-
-- readability
-
-- maintainability
-
-- consistency
-
-- modularity
-
-Possible regressions include:
-
-- duplication
-
-- hidden coupling
-
-- unnecessary abstraction
-
-- architectural drift
-
----
-
-# Refactor Review
-
-Behavior-preserving refactors should receive special attention.
-
-Verify:
-
-✓ behavior remains identical
-
-✓ public interfaces remain compatible
-
-✓ configuration remains compatible
-
-✓ startup behavior remains unchanged
-
-✓ scripts execute in the same order
-
-Never assume behavior preservation.
-
-Prove it.
-
----
-
-# Bash Review
-
-Every modified shell script should be reviewed for:
-
-- quoting
-
-- error handling
-
-- portability (when applicable)
-
-- ShellCheck compliance
-
-- readability
-
-- defensive programming
-
----
-
-# Architectural Review
-
-Whenever architecture changes:
-
-Verify:
-
-- responsibilities remain clear
-
-- coupling decreases
-
-- cohesion increases
-
-- abstractions justify themselves
-
-- complexity is reduced
-
-Architecture should become simpler.
-
-Not merely different.
-
----
-
-# Engineering Smells
-
-The following findings should trigger additional investigation.
-
-## Smell
-
-Large implementation.
-
-Question
-
-Could this have been multiple PRs?
-
----
-
-## Smell
-
-Many unrelated files modified.
-
-Question
-
-Has scope expanded?
-
----
-
-## Smell
-
-New abstraction introduced.
-
-Question
-
-Was the previous abstraction insufficient?
-
----
-
-## Smell
-
-Many comments explaining code.
-
-Question
-
-Could the code become simpler instead?
-
----
-
-## Smell
-
-Many conditionals.
-
-Question
-
-Can complexity be reduced?
-
----
-
-## Smell
-
-Duplicated logic.
-
-Question
-
-Can existing code be reused?
-
----
-
-## Smell
-
-Unexpected behavior changes.
-
-Question
-
-Were these changes requested?
-
----
-
-# Review Severity
-
-Every finding should have a severity.
-
-## Blocker
-
-Must be fixed before merge.
-
-Examples:
-
-- incorrect behavior
-
-- regression
-
-- broken tests
-
-- security issue
-
-- architecture violation
-
-- specification violation
-
----
-
-## Major
-
-Should normally be fixed before merge.
-
-Examples:
-
-- unnecessary complexity
-
-- duplicated logic
-
-- maintainability concerns
-
-- poor modularity
-
----
-
-## Minor
-
-Can be merged but should be addressed.
-
-Examples:
-
-- naming
-
-- comments
-
-- formatting
-
-- documentation
-
----
-
-## Suggestion
-
-Optional improvements.
-
-Should not block merge.
-
----
-
-# Approval Criteria
-
-Approve only if all of the following are true.
-
-✓ Correctness demonstrated
-
-✓ Repository standards respected
-
-✓ Specification satisfied
-
-✓ No significant regressions
-
-✓ Maintainability preserved
-
-✓ Complexity justified
-
-✓ Review findings resolved
-
-If any item fails,
-
-do not approve.
-
----
-
-# Blocking Philosophy
-
-Blocking a PR is not failure.
-
-Blocking protects the repository.
-
-Reject implementations when:
-
-- uncertainty remains
-
-- correctness has not been demonstrated
-
-- repository quality decreases
-
-- maintainability regresses
-
-- unnecessary complexity is introduced
-
-The cost of rejecting a poor implementation is far lower than maintaining it for years.
-
----
-
-# Final Question
-
-Before approving any implementation, ask:
-
-> Would I be comfortable maintaining this code for the next five years?
-
-If the answer is anything other than an unambiguous "yes",
-
-the review is not finished.
+9. **Run `/code-review`** against the fixed point where the worktree branched off, using the standard review framing (see "Task Planning & Skills Workflow" § The Main Build Chain) — Standards + Spec review. Resolve any Blocker/Major findings before proceeding.
+10. **Commit, push, and merge into `dev`** via PR (see "Branching & Release Policy"). `dev` must never receive direct commits.
