@@ -557,11 +557,25 @@ print_summary() {
   local label="${1:-Installation}"
   local total=$((_install_ok + _install_fail + _install_skip))
   local title="RaVN ${label} Summary"
+  local w=39
+  local title_len=${#title}
+  local pad_left=0
+  local pad_right=0
 
-  border=$(printf '─%.0s' {1..39})
+  # Si el título excede el ancho de la caja, se trunca para no romper el layout
+  # (evita padding negativo y desalineación de las filas de estadísticas).
+  if ((title_len > w - 2)); then
+    title="${title:0:$((w - 5))}..."
+    title_len=${#title}
+  fi
+
+  pad_left=$(((w - title_len) / 2))
+  pad_right=$((w - title_len - pad_left))
+
+  border=$(printf '─%.0s' $(seq 1 "$w"))
   echo ""
   echo -e "  ${GRAY}┌${border}┐${NC}"
-  printf "  ${GRAY}│${NC}  ${WHITE}%s${NC}%*s${GRAY}│${NC}\n" "$title" "$((37 - ${#title}))" ""
+  printf "  ${GRAY}│${NC}${WHITE}%*s%s%*s${NC}${GRAY}│${NC}\n" "$pad_left" "" "$title" "$pad_right" ""
   echo -e "  ${GRAY}├${border}┤${NC}"
   printf "  ${GRAY}│${NC}  ${GREEN}${ICON_CHECK}${NC} Exitosos:%25s ${GRAY}│${NC}\n" "$_install_ok"
   printf "  ${GRAY}│${NC}  ${RED}${ICON_CROSS}${NC} Fallidos:%25s ${GRAY}│${NC}\n" "$_install_fail"
