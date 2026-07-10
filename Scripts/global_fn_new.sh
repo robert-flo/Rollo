@@ -95,6 +95,63 @@ aur_available() {
 }
 
 # ┌──────────────────────────────────────────────────────────────────────────────┐
+# │ Hardware Detection                                                           │
+# └──────────────────────────────────────────────────────────────────────────────┘
+
+nvidia_detect() {
+  local gpu_name=""
+  local gpu_code=""
+  local index=""
+
+  readarray -t dGPU < <(lspci -k | grep -E "(VGA|3D)" | awk -F ': ' '{print $NF}')
+
+  case "${1:-}" in
+    --verbose)
+      for index in "${!dGPU[@]}"; do
+        echo -e "${GREEN}[gpu${index}]${NC} detected :: ${dGPU[$index]}"
+      done
+      return 0
+      ;;
+    --drivers)
+      for gpu_name in "${dGPU[@]}"; do
+        gpu_code="${gpu_name%% *}"
+        awk -F '|' -v nvc="$gpu_code" 'substr(nvc, 1, length($3)) == $3 {split(FILENAME, driver, "/"); print driver[length(driver)], "\nnvidia-utils"}' "${scrDir}"/nvidia-db/nvidia*dkms
+      done
+      return 0
+      ;;
+  esac
+
+  grep -iq nvidia <<< "${dGPU[*]}"
+}
+
+# ┌──────────────────────────────────────────────────────────────────────────────┐
+# │ Interactive Utilities                                                        │
+# └──────────────────────────────────────────────────────────────────────────────┘
+
+prompt_timer() {
+  local message="$2"
+  local prompt_input="/dev/stdin"
+  local remaining_seconds="$1"
+
+  unset PROMPT_INPUT
+
+  if [[ -t 0 && -r /dev/tty ]]; then
+    prompt_input="/dev/tty"
+  fi
+
+  while ((remaining_seconds >= 0)); do
+    echo -ne "\r :: ${message} (${remaining_seconds}s) : "
+    if IFS= read -r -t 1 -n 1 PROMPT_INPUT < "$prompt_input"; then
+      break
+    fi
+    ((remaining_seconds--))
+  done
+
+  export PROMPT_INPUT
+  echo ""
+}
+
+# ┌──────────────────────────────────────────────────────────────────────────────┐
 # │ Helper Functions                                                             │
 # └──────────────────────────────────────────────────────────────────────────────┘
 

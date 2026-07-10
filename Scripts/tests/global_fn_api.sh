@@ -106,11 +106,55 @@ EOF
   done
 }
 
+verify_hardware_and_interaction() {
+  local helper=""
+  local test_dir=""
+
+  test_dir="$(mktemp -d)"
+  trap 'rm -rf "$test_dir"' RETURN
+  mkdir -p "$test_dir/bin" "$test_dir/nvidia-db"
+
+  cat > "$test_dir/bin/lspci" << 'EOF'
+#!/usr/bin/env bash
+printf '%s\n' '01:00.0 VGA compatible controller: NVIDIA Corporation GP108M [GeForce MX150]'
+EOF
+  cat > "$test_dir/nvidia-db/nvidia-dkms" << 'EOF'
+vendor|family|NVIDIA
+EOF
+  chmod +x "$test_dir/bin/lspci"
+
+  for helper in "$baseline" "$candidate"; do
+    PATH="$test_dir/bin:$PATH" bash -c '
+      source "$1"
+      scrDir="$2"
+      nvidia_detect
+      nvidia_detect --verbose | sed "s/\x1b\[[0-9;]*m//g" | grep -Fq "[gpu0] detected :: NVIDIA Corporation"
+      nvidia_detect --drivers | grep -q "nvidia-dkms"
+      nvidia_detect --drivers | grep -qx "nvidia-utils"
+      prompt_timer 0 "Continue" <<<"y"
+      [[ $PROMPT_INPUT == "y" ]]
+      export -p | grep -q "declare -x PROMPT_INPUT=\"y\""
+    ' _ "$helper" "$test_dir" || die "NVIDIA and prompt compatibility check failed: $helper"
+  done
+
+  cat > "$test_dir/bin/lspci" << 'EOF'
+#!/usr/bin/env bash
+printf '%s\n' '00:02.0 VGA compatible controller: Intel Corporation UHD Graphics'
+EOF
+
+  for helper in "$baseline" "$candidate"; do
+    if PATH="$test_dir/bin:$PATH" bash -c 'source "$1"; nvidia_detect' _ "$helper"; then
+      die "Non-NVIDIA hardware was incorrectly detected: $helper"
+    fi
+  done
+}
+
 verify_helper "$baseline"
 verify_helper "$candidate"
 compare_inventory "Baseline" "$baseline"
 compare_inventory "Candidate" "$candidate"
 verify_candidate_behavior
 verify_runtime_and_packages
+verify_hardware_and_interaction
 
 printf '\nAPI inventory completed successfully.\n'
