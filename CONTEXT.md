@@ -20,6 +20,10 @@ _Avoid_: textual equality, identical output
 Running the baseline helper and canonical helper through equivalent dry-run scenarios under controlled conditions so their semantic behavior can be compared directly.
 _Avoid_: manual comparison, visual test only
 
+**Sandboxed comparison**:
+A side-by-side validation run whose helpers, script copies, home directory, caches, bare repositories, and worktrees are isolated in a temporary directory.
+_Avoid_: live test, direct system test
+
 ## Scope Boundaries
 
 **Visual integration phase**:
