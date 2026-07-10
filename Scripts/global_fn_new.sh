@@ -38,6 +38,63 @@ readonly ICON_ROCKET="󱓞"
 readonly ICON_PACKAGE="󰏗"
 
 # ┌──────────────────────────────────────────────────────────────────────────────┐
+# │ Global Variables                                                             │
+# └──────────────────────────────────────────────────────────────────────────────┘
+
+scrDir="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
+cloneDir="${CLONE_DIR:-$(dirname "$scrDir")}"
+confDir="${XDG_CONFIG_HOME:-$HOME/.config}"
+cacheDir="${XDG_CACHE_HOME:-$HOME/.cache}/ravn"
+aurList=("yay" "paru")
+shlList=("zsh" "fish")
+pacmanCmd="${cloneDir}/Configs/.local/lib/hyde/pm.sh"
+
+export cloneDir
+export confDir
+export cacheDir
+export aurList
+export shlList
+
+# ┌──────────────────────────────────────────────────────────────────────────────┐
+# │ Package Management                                                           │
+# └──────────────────────────────────────────────────────────────────────────────┘
+
+pkg_installed() {
+  local package_name="$1"
+
+  pacman -Q "$package_name" &> /dev/null
+}
+
+chk_list() {
+  local variable_name="$1"
+  local package_name=""
+  local packages=("${@:2}")
+
+  for package_name in "${packages[@]}"; do
+    if pkg_installed "$package_name"; then
+      printf -v "$variable_name" '%s' "$package_name"
+      # shellcheck disable=SC2163 # Dynamic variable name is part of the public contract.
+      export "$variable_name"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+pkg_available() {
+  local package_name="$1"
+
+  "$pacmanCmd" query "$package_name" &> /dev/null
+}
+
+aur_available() {
+  local package_name="$1"
+
+  "$pacmanCmd" info "$package_name" &> /dev/null
+}
+
+# ┌──────────────────────────────────────────────────────────────────────────────┐
 # │ Helper Functions                                                             │
 # └──────────────────────────────────────────────────────────────────────────────┘
 
