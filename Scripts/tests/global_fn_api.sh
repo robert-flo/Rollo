@@ -149,6 +149,62 @@ EOF
   done
 }
 
+verify_console_and_logging() {
+  local helper=""
+  local test_dir=""
+
+  test_dir="$(mktemp -d)"
+  trap 'rm -rf "$test_dir"' RETURN
+
+  for helper in "$baseline" "$candidate"; do
+    CLONE_DIR="$test_dir" \
+      XDG_CACHE_HOME="$test_dir/cache" \
+      RAVN_LOG="console-test" \
+      log_section="installer" \
+      bash -c '
+        source "$1"
+        print_log -sec "core" -g "ready" -warn "careful" -err "broken" -stat "state" "active" -crit "stop" + 208 " manual"
+      ' _ "$helper" > "$test_dir/output" || die "Console logging check failed: $helper"
+
+    sed "s/\x1b\[[0-9;]*m//g" "$test_dir/output" > "$test_dir/output-clean"
+    grep -Fq "[installer] [core] readyWARNING ::  careful" "$test_dir/output-clean" || die "Section and warning output changed: $helper"
+    grep -Fq "ERROR :: broken" "$test_dir/output-clean" || die "Error output changed: $helper"
+    grep -Fq "state  :: active stop  ::  manual" "$test_dir/output-clean" || die "Status output changed: $helper"
+
+    log_file="$test_dir/cache/ravn/logs/console-test/_.log"
+    [[ -f $log_file ]] || die "Log file was not created: $helper"
+    ! grep -q $'\033' "$log_file" || die "Log file contains ANSI escapes: $helper"
+    grep -Fq "ERROR :: broken" "$log_file" || die "Log file lost output: $helper"
+
+    bash -c '
+      source "$1"
+      info "info message"
+      success "success message"
+      step "step message"
+    ' _ "$helper" > "$test_dir/stdout" || die "Console aliases failed: $helper"
+    bash -c '
+      source "$1"
+      warn_msg "warning message"
+      error_msg "error message"
+    ' _ "$helper" 2> "$test_dir/stderr" || die "Error aliases failed: $helper"
+    grep -Fq "info message" "$test_dir/stdout" || die "Info alias lost output: $helper"
+    grep -Fq "success message" "$test_dir/stdout" || die "Success alias lost output: $helper"
+    grep -Fq "step message" "$test_dir/stdout" || die "Step alias lost output: $helper"
+    grep -Fq "warning message" "$test_dir/stderr" || die "Warning alias lost stderr: $helper"
+    grep -Fq "error message" "$test_dir/stderr" || die "Error alias lost stderr: $helper"
+
+    # shellcheck disable=SC2016 # The child shell evaluates this compatibility fixture.
+    CLONE_DIR="$test_dir/no-log" \
+      XDG_CACHE_HOME="$test_dir/no-log/cache" \
+      env -u RAVN_LOG bash -c '
+        source "$1"
+        print_log "without persisted log"
+      ' _ "$helper" > /dev/null || die "Logging without RAVN_LOG failed: $helper"
+    [[ -d $test_dir/no-log/cache/ravn/logs ]] || die "Log directory side effect changed: $helper"
+    [[ ! -f $test_dir/no-log/cache/ravn/logs/_.log ]] || die "Unexpected persisted log without RAVN_LOG: $helper"
+  done
+}
+
 verify_helper "$baseline"
 verify_helper "$candidate"
 compare_inventory "Baseline" "$baseline"
@@ -156,5 +212,6 @@ compare_inventory "Candidate" "$candidate"
 verify_candidate_behavior
 verify_runtime_and_packages
 verify_hardware_and_interaction
+verify_console_and_logging
 
 printf '\nAPI inventory completed successfully.\n'

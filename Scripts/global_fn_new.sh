@@ -203,3 +203,114 @@ print_info() {
 command_exists() {
   command -v "$1" > /dev/null 2>&1
 }
+
+# ┌──────────────────────────────────────────────────────────────────────────────┐
+# │ Console Output & Logging                                                     │
+# └──────────────────────────────────────────────────────────────────────────────┘
+
+info() {
+  print_info "$*"
+}
+
+success() {
+  print_success "$*"
+}
+
+warn_msg() {
+  print_warn "$*" >&2
+}
+
+error_msg() {
+  print_error "$*" >&2
+}
+
+step() {
+  print_step "$*"
+}
+
+print_log() {
+  local color=""
+  local executable="${0##*/}"
+  local log_file="${cacheDir}/logs/${RAVN_LOG:-}/${executable}.log"
+  local message=""
+  local section="${log_section:-}"
+
+  if [[ -n $section ]]; then
+    message+="${GREEN}[${section}] ${NC}"
+  fi
+
+  while (($#)); do
+    case "$1" in
+      -r | +r)
+        message+="${RED}${2}${NC}"
+        shift 2
+        ;;
+      -g | +g)
+        message+="${GREEN}${2}${NC}"
+        shift 2
+        ;;
+      -y | +y)
+        message+="${YELLOW}${2}${NC}"
+        shift 2
+        ;;
+      -b | +b)
+        message+="${BLUE}${2}${NC}"
+        shift 2
+        ;;
+      -m | +m)
+        message+="${MAGENTA}${2}${NC}"
+        shift 2
+        ;;
+      -c | +c)
+        message+="${CYAN}${2}${NC}"
+        shift 2
+        ;;
+      -wt | +w)
+        message+="${WHITE}${2}${NC}"
+        shift 2
+        ;;
+      -n | +n)
+        message+="\033[0;96m${2}${NC}"
+        shift 2
+        ;;
+      -stat)
+        message+="\033[30;46m ${2} ${NC} :: "
+        shift 2
+        ;;
+      -crit)
+        message+="\033[97;41m ${2} ${NC} :: "
+        shift 2
+        ;;
+      -warn)
+        message+="WARNING :: \033[30;43m ${2} ${NC} :: "
+        shift 2
+        ;;
+      +)
+        printf -v color '\033[38;5;%sm' "$2"
+        message+="${color}${3}${NC}"
+        shift 3
+        ;;
+      -sec)
+        message+="${GREEN}[${2}] ${NC}"
+        shift 2
+        ;;
+      -err)
+        message+="ERROR :: \033[4;31m${2} ${NC}"
+        shift 2
+        ;;
+      *)
+        message+="$1"
+        shift
+        ;;
+    esac
+  done
+
+  message+="\n"
+  mkdir -p "$(dirname "$log_file")"
+
+  if [[ -n ${RAVN_LOG:-} ]]; then
+    printf '%b' "$message" | tee >(sed 's/\x1b\[[0-9;]*m//g' >> "$log_file")
+  else
+    printf '%b' "$message"
+  fi
+}
