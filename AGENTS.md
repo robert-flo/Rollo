@@ -21,6 +21,20 @@ Guidance for any agent (or developer) working in the RaVN dotfiles repository. S
 
 ---
 
+## Agent skills
+
+### Issue tracker
+
+GitHub Issues via `gh` CLI. External PRs are not triaged. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default vocabulary (needs-triage, needs-info, ready-for-agent, ready-for-human, wontfix). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context. See `docs/agents/domain.md`.
+
 ## Repository Structure & Purpose
 
 - `Configs/` - Source of truth for clean configuration files and templates that populate the user's `$HOME` (e.g., `.config/`, `.bashrc`).
