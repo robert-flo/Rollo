@@ -35,6 +35,15 @@ done
 
 # ─── Main ────────────────────────────────────────────────────────────────────
 main() {
+  local action="${1:-}"
+
+  if [[ $action == "verify" || $action == "run" ]]; then
+    shift
+    discover_tasks
+    run_selected_tasks "$action" "$@"
+    return
+  fi
+
   step "Configuración Final"
   print_log -g "[FINAL CONFIG] " -b " :: " "Iniciando configuración final..."
 

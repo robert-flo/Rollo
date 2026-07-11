@@ -32,6 +32,7 @@ INTERACTIVE=false
 before()  { :; }
 check()   { return 1; }
 install() { :; }
+verify()  { :; }
 after()   { :; }
 cleanup() { :; }
 reset()   { :; }
