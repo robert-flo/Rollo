@@ -42,7 +42,7 @@ main() {
     return
   fi
 
-  if [[ $action == "verify" || $action == "run" || $action == "test" || $action == "reset" || $action == "baseline" || $action == "--baseline" ]]; then
+  if [[ $action == "verify" || $action == "run" || $action == "test" || $action == "reset" || $action == "update" || $action == "check-updates" || $action == "baseline" || $action == "--baseline" ]]; then
     if [[ $action == "baseline" || $action == "--baseline" ]]; then
       action="run"
       set -- BASELINE

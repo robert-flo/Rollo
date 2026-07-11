@@ -40,6 +40,8 @@ before()  { :; }
 check()   { return 1; }
 install() { :; }
 verify()  { :; }
+check_updates() { :; }
+update()  { :; }
 after()   { :; }
 cleanup() { :; }
 reset()   { :; }
