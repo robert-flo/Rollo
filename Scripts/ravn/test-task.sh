@@ -234,6 +234,9 @@ source "/package.sh" 2>/dev/null || true
 source "/hooks.sh" 2>/dev/null || true
 source "/contract.sh" 2>/dev/null || true
 source "/mise.sh" 2>/dev/null || true
+source "/mise-cli.sh" 2>/dev/null || true
+export RAVN_DIR="/"
+source "/task.sh" 2>/dev/null || true
 
 if [[ "$installer_strategy" == "mise" || "$installer_strategy" == "omarchy-npx" ]]; then
   export RAVN_ALLOW_MISE_BOOTSTRAP=1
@@ -246,8 +249,6 @@ if [[ "$installer_strategy" == "mise" || "$installer_strategy" == "omarchy-npx" 
   ravn_verify_mise > /dev/null
   printf 'mise fixture: %s\n' "\$RAVN_EVIDENCE_MISE_VERSION"
 fi
-source "/task.sh" 2>/dev/null || true
-
 if declare -f install >/dev/null; then
   if (( $DRY_RUN == 1 )); then
     echo "Modo dry-run activado"
@@ -301,6 +302,7 @@ EOF
        -v "$RAVN_DIR/framework/hooks.sh:/hooks.sh:ro" \
        -v "$RAVN_DIR/framework/contract.sh:/contract.sh:ro" \
        -v "$RAVN_DIR/framework/mise.sh:/mise.sh:ro" \
+       -v "$RAVN_DIR/framework/mise-cli.sh:/mise-cli.sh:ro" \
        -v "$test_script:/test.sh:ro" \
        "$DOCKER_IMAGE" bash /test.sh; then
     echo "✓ $package → PASÓ"
