@@ -20,7 +20,7 @@ for task_file in "${TASKS_DIR}"/*.sh; do
   fi
 done
 
-[[ $active_count -eq 5 ]]
+[[ $active_count -eq 6 ]]
 [[ $reference_count -eq 1 ]]
 
 printf 'PASS: active npm task selection excludes reference-only modules\n'
