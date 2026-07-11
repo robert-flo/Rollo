@@ -60,7 +60,6 @@ exec_package_bin() {
 # Execute the declared package bin directly inside npx. This avoids relying on
 # shell $(which) behavior inside a temporary npx environment.
 package_spec="\$package@\$version"
-"\$node_bin" "\$npx_bin" --yes --prefer-online --package "\$package_spec" -- true
 PATH="\$node_root/bin:\$PATH" exec "\$node_bin" "\$npx_bin" --yes \
   --prefer-online --package "\$package_spec" -- "\$bin_name" "\$@"
 EOF

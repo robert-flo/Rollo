@@ -62,16 +62,16 @@ After all six tickets are implemented:
 
 ## Next increment: OpenCode pilot
 
-Only after the menu/runner increment is complete and reviewed, create a new atomic spec and tickets for `opencode`.
+The OpenCode pilot was completed through tickets #24–#27. The comparison is documented in `docs/agents/opencode-backend-comparison.md` and ADR 0003.
 
 The pilot must compare two strategies under equivalent scenarios:
 
-- `mise` as the preferred initial strategy.
-- A hardened `omarchy-npx-install` backend as the comparison strategy.
+- `mise` as the selected standard for versioned npm CLIs.
+- A hardened `omarchy-npx-install` backend as an explicit fallback.
 
 The comparison must cover clean installation, idempotent rerun, real command execution, missing dependencies, network failure behavior, isolated Docker/VM testing, reset, post-reset verification, and reinstall.
 
-Do not migrate all existing tasks at once. Each task has its own particularities and must be addressed individually after the pilot establishes a reliable pattern.
+Do not migrate all existing tasks at once. Each task has its own particularities and must be addressed individually using the pilot contract. Nix remains a separate future backend experiment, not a current default.
 
 ## Explicitly rejected directions
 
