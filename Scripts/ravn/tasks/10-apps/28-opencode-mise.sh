@@ -29,7 +29,10 @@ RAVN_UPDATE_AVAILABLE=false
 RAVN_UPDATE_RESULT=""
 
 opencode_mise_bin() {
-  ravn_verify_mise > /dev/null || return 1
+  if ! ravn_verify_mise > /dev/null; then
+    RAVN_DEPENDENCY_MISSING=true
+    return 1
+  fi
   ravn_mise_binary
 }
 

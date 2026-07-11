@@ -53,6 +53,16 @@ grep -q 'status = "broken"' \
   "${XDG_STATE_HOME}/ravn/tasks/opencode-contract/state.toml"
 unset RAVN_TEST_INSTALL_RESULT
 
+export RAVN_TEST_DEPENDENCY_RESULT="missing"
+if run_selected_tasks run opencode-contract; then
+  printf 'FAIL: missing dependency was accepted\n' >&2
+  exit 1
+fi
+assert_result "opencode-contract:dependency-missing"
+grep -q 'status = "dependency-missing"' \
+  "${XDG_STATE_HOME}/ravn/tasks/opencode-contract/state.toml"
+unset RAVN_TEST_DEPENDENCY_RESULT
+
 export RAVN_TEST_VERIFY_RESULT="failure"
 if run_selected_tasks run opencode-contract; then
   printf 'FAIL: verify failure was accepted\n' >&2
