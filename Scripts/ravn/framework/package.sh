@@ -29,6 +29,23 @@ RAVN_DEPENDENCY_MISSING=false
 # Set to true for packages requiring user confirmation before install
 INTERACTIVE=false
 
+ravn_source_mise_cli() {
+  local framework_path="${RAVN_DIR}/framework/mise-cli.sh"
+
+  if [[ -f $framework_path ]]; then
+    # shellcheck disable=SC1090
+    source "$framework_path"
+  else
+    # shellcheck disable=SC1091
+    source /mise-cli.sh
+  fi
+}
+
+ravn_mise_cli_task() {
+  ravn_source_mise_cli
+  mise_cli_task
+}
+
 # ─── Lifecycle hooks (no-op defaults) ────────────────────────────────────────
 # before  — Pre-install preparation (create dirs, fetch keys, etc.)
 # check   — Return 0 if the package is already installed/configured (skip).
