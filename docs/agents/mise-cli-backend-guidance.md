@@ -22,9 +22,23 @@ Shell activation may be offered as an optional convenience for users who want di
 
 ## Version policy
 
-- Pin a concrete version by default for reproducible installs and stable tests.
-- `latest` may be supported as an explicit user override, but must not be the silent default for production deployment.
-- Record the selected version in task-owned state or configuration so upgrades and failures are diagnosable.
+The shared `mise-cli` backend follows RaVN's rolling-tool policy:
+
+- `CLI_PACKAGE` and `CLI_COMMAND` are the only required descriptor fields.
+- `CLI_DESCRIPTION` defaults to `<command> managed by mise`.
+- `CLI_VERSION` defaults to `latest`; `CLI_NODE_VERSION` defaults to `latest`.
+- `CLI_VERIFY_ARGS` defaults to `--version` and must produce non-empty output.
+- `allow_builds = true` and `--ignore-scripts=false` are emitted in the task-owned mise configuration.
+- The selected and resolved versions are recorded in runner evidence so upgrades and failures are diagnosable.
+
+The canonical descriptor should therefore remain small:
+
+```bash
+CLI_PACKAGE="vendor/package"
+CLI_COMMAND="tool"
+source "${RAVN_DIR}/framework/mise-cli.sh"
+mise_cli_task
+```
 
 ## Runtime and package policy
 
