@@ -56,12 +56,19 @@ else
 fi
 
 # These are retained as public constants; they are not rendered in logs.
+# shellcheck disable=SC2034
 readonly ICON_KEY="[KEY]"
+# shellcheck disable=SC2034
 readonly ICON_LOCK="[LOCK]"
+# shellcheck disable=SC2034
 readonly ICON_GIT="[GIT]"
+# shellcheck disable=SC2034
 readonly ICON_GITHUB="[GITHUB]"
+# shellcheck disable=SC2034
 readonly ICON_GEAR="[GEAR]"
+# shellcheck disable=SC2034
 readonly ICON_ROCKET="[ROCKET]"
+# shellcheck disable=SC2034
 readonly ICON_PACKAGE="[PACKAGE]"
 
 # ┌──────────────────────────────────────────────────────────────────────────────┐

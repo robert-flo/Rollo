@@ -5,6 +5,9 @@
 
 TASK_RESULTS=()
 TASK_FAILURES=()
+RAVN_CURRENT_OPERATION=""
+RAVN_CURRENT_TASK_ID=""
+RAVN_EVIDENCE_LOG_PATH=""
 
 _runner_reset_task_contract() {
   # shellcheck disable=SC1091
@@ -87,13 +90,42 @@ _runner_log_dir() {
   mkdir -p "${RAVN_DIR}/cache/logs"
 }
 
+_runner_redact_log() {
+  local log="$1"
+
+  if declare -f ravn_redact_log > /dev/null; then
+    ravn_redact_log "$log"
+  fi
+}
+
 _runner_record() {
   local name="$1"
   local result="$2"
+  local exit_code="${3:-0}"
+  local state=""
 
   TASK_RESULTS+=("${name}:${result}")
-  if [[ $result == "failed" || $result == "unverified" ]]; then
+  if [[ $result == "failed" || $result == "unverified" || $result == "dependency-missing" ]]; then
     TASK_FAILURES+=("$name")
+  fi
+
+  case "$result" in
+    verified | up-to-date) state="verified" ;;
+    update-available) state="stale" ;;
+    skipped) state="installed" ;;
+    disabled | reset) state="absent" ;;
+    unverified | reset-unsupported) state="partial" ;;
+    failed | reset-failed) state="broken" ;;
+    dependency-missing) state="dependency-missing" ;;
+    update-failed) state="update-failed" ;;
+    rollback-failed) state="rollback-failed" ;;
+    *) return 0 ;;
+  esac
+
+  if declare -f ravn_record_task_evidence > /dev/null; then
+    ravn_record_task_evidence "${RAVN_CURRENT_TASK_ID:-$name}" \
+      "${RAVN_CURRENT_OPERATION:-unknown}" "$state" "$exit_code" "$result" \
+      "$RAVN_EVIDENCE_LOG_PATH"
   fi
 }
 
@@ -104,7 +136,10 @@ verify_selected_task() {
 
   load_task "$file"
   name="${PACKAGE:-$(basename "$file" .sh)}"
+  RAVN_CURRENT_TASK_ID="${TASK_ID:-$name}"
+  RAVN_CURRENT_OPERATION="verify"
   log="${RAVN_DIR}/cache/logs/${name}.log"
+  RAVN_EVIDENCE_LOG_PATH="$log"
   _runner_log_dir
 
   if task_is_disabled "$name"; then
@@ -120,13 +155,22 @@ verify_selected_task() {
   fi
 
   if verify >> "$log" 2>&1; then
+    _runner_redact_log "$log"
+    if ! _runner_record "$name" "verified"; then
+      error_msg "${name}: Verificado, pero no se pudo registrar la evidencia."
+      return 1
+    fi
     success "${name}: Verificado."
-    _runner_record "$name" "verified"
     return 0
   fi
 
+  _runner_redact_log "$log"
   error_msg "${name}: Verificación falló. Log: ${log}"
-  _runner_record "$name" "failed"
+  if [[ ${RAVN_DEPENDENCY_MISSING:-false} == true ]]; then
+    _runner_record "$name" "dependency-missing" 1
+  else
+    _runner_record "$name" "failed" 1
+  fi
   return 1
 }
 
@@ -137,7 +181,10 @@ run_selected_task() {
 
   load_task "$file"
   name="${PACKAGE:-$(basename "$file" .sh)}"
+  RAVN_CURRENT_TASK_ID="${TASK_ID:-$name}"
+  RAVN_CURRENT_OPERATION="run"
   log="${RAVN_DIR}/cache/logs/${name}.log"
+  RAVN_EVIDENCE_LOG_PATH="$log"
   _runner_log_dir
 
   if task_is_disabled "$name"; then
@@ -153,8 +200,13 @@ run_selected_task() {
   fi
 
   if ! install >> "$log" 2>&1; then
+    _runner_redact_log "$log"
     error_msg "${name}: Instalación falló. Log: ${log}"
-    _runner_record "$name" "failed"
+    if [[ ${RAVN_DEPENDENCY_MISSING:-false} == true ]]; then
+      _runner_record "$name" "dependency-missing" 1
+    else
+      _runner_record "$name" "failed" 1
+    fi
     return 1
   fi
 
@@ -165,13 +217,99 @@ run_selected_task() {
   fi
 
   if verify >> "$log" 2>&1; then
+    _runner_redact_log "$log"
+    if ! _runner_record "$name" "verified"; then
+      error_msg "${name}: Instalado, pero no se pudo registrar la evidencia."
+      return 1
+    fi
     success "${name}: Instalado y verificado."
-    _runner_record "$name" "verified"
     return 0
   fi
 
+  _runner_redact_log "$log"
   error_msg "${name}: Instalado, pero la verificación falló. Log: ${log}"
-  _runner_record "$name" "failed"
+  _runner_record "$name" "failed" 1
+  return 1
+}
+
+check_updates_selected_task() {
+  local file="$1"
+  local name=""
+  local log=""
+
+  load_task "$file"
+  name="${PACKAGE:-$(basename "$file" .sh)}"
+  RAVN_CURRENT_TASK_ID="${TASK_ID:-$name}"
+  RAVN_CURRENT_OPERATION="check-updates"
+  log="${RAVN_DIR}/cache/logs/${name}.log"
+  RAVN_EVIDENCE_LOG_PATH="$log"
+  _runner_log_dir
+
+  if ! task_capability check_updates; then
+    warn_msg "${name}: No soporta check-updates()."
+    _runner_record "$name" "unverified" 1
+    return 1
+  fi
+
+  if ! check_updates >> "$log" 2>&1; then
+    _runner_redact_log "$log"
+    error_msg "${name}: No se pudo consultar actualizaciones. Log: ${log}"
+    _runner_record "$name" "failed" 1
+    return 1
+  fi
+
+  _runner_redact_log "$log"
+  if [[ ${RAVN_UPDATE_AVAILABLE:-false} == true ]]; then
+    info "${name}: Actualización disponible."
+    _runner_record "$name" "update-available"
+  else
+    success "${name}: Ya está actualizado."
+    _runner_record "$name" "up-to-date"
+  fi
+}
+
+update_selected_task() {
+  local file="$1"
+  local name=""
+  local log=""
+  local result="update-failed"
+
+  load_task "$file"
+  name="${PACKAGE:-$(basename "$file" .sh)}"
+  RAVN_CURRENT_TASK_ID="${TASK_ID:-$name}"
+  RAVN_CURRENT_OPERATION="update"
+  log="${RAVN_DIR}/cache/logs/${name}.log"
+  RAVN_EVIDENCE_LOG_PATH="$log"
+  _runner_log_dir
+
+  if ! task_capability update; then
+    warn_msg "${name}: No soporta update()."
+    _runner_record "$name" "unverified" 1
+    return 1
+  fi
+
+  if update >> "$log" 2>&1; then
+    _runner_redact_log "$log"
+    if ! task_capability verify || ! verify >> "$log" 2>&1; then
+      _runner_redact_log "$log"
+      error_msg "${name}: update() terminó, pero verify() falló. Log: ${log}"
+      _runner_record "$name" "update-failed" 1
+      return 1
+    fi
+    if ! _runner_record "$name" "verified"; then
+      error_msg "${name}: Actualizado, pero no se pudo registrar la evidencia."
+      return 1
+    fi
+    success "${name}: Actualizado y verificado."
+    return 0
+  fi
+
+  _runner_redact_log "$log"
+  if [[ ${RAVN_UPDATE_RESULT:-} == "rollback-failed" ]]; then
+    result="rollback-failed"
+  fi
+  error_msg "${name}: Actualización falló (${result}). Log: ${log}"
+  _runner_record "$name" "$result" 1
   return 1
 }
 
@@ -186,11 +324,12 @@ run_selected_tasks() {
   resolve_task_files "$@" || return 1
 
   for file in "${RESOLVED_TASKS[@]}"; do
-    if [[ $action == "verify" ]]; then
-      verify_selected_task "$file" || status=1
-    else
-      run_selected_task "$file" || status=1
-    fi
+    case "$action" in
+      verify) verify_selected_task "$file" || status=1 ;;
+      check-updates) check_updates_selected_task "$file" || status=1 ;;
+      update) update_selected_task "$file" || status=1 ;;
+      *) run_selected_task "$file" || status=1 ;;
+    esac
   done
 
   print_task_results
@@ -224,7 +363,10 @@ reset_selected_task() {
 
   load_task "$file"
   name="${PACKAGE:-$(basename "$file" .sh)}"
+  RAVN_CURRENT_TASK_ID="${TASK_ID:-$name}"
+  RAVN_CURRENT_OPERATION="reset"
   log="${RAVN_DIR}/cache/logs/${name}.log"
+  RAVN_EVIDENCE_LOG_PATH="$log"
   _runner_log_dir
 
   if ! task_capability reset || ! task_capability verify_reset; then
@@ -234,13 +376,18 @@ reset_selected_task() {
   fi
 
   if reset >> "$log" 2>&1 && verify_reset >> "$log" 2>&1; then
+    _runner_redact_log "$log"
+    if ! _runner_record "$name" "reset"; then
+      error_msg "${name}: Reset verificado, pero no se pudo registrar la evidencia."
+      return 1
+    fi
     success "${name}: Reset completado y verificado."
-    _runner_record "$name" "reset"
     return 0
   fi
 
+  _runner_redact_log "$log"
   error_msg "${name}: Reset o verificación del reset falló. Log: ${log}"
-  _runner_record "$name" "reset-failed"
+  _runner_record "$name" "reset-failed" 1
   return 1
 }
 
@@ -269,6 +416,8 @@ reset_selected_tasks() {
   for file in "${RESOLVED_TASKS[@]}"; do
     load_task "$file"
     name="${PACKAGE:-$(basename "$file" .sh)}"
+    RAVN_CURRENT_TASK_ID="${TASK_ID:-$name}"
+    RAVN_CURRENT_OPERATION="reset"
     if task_capability reset && task_capability verify_reset; then
       supported+=("$file")
       printf '  reset: %s\n' "$name"

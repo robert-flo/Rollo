@@ -13,7 +13,7 @@
 #   ./test-task.sh --all
 #   ./test-task.sh hermes
 #   ./test-task.sh 25-hermes
-#   ./test-task.sh 10-apps
+#   ./test-task.sh 10-npm-apps
 #   ./test-task.sh hermes codex grok
 #   ./test-task.sh hermes --dry-run
 #   ./test-task.sh hermes --keep
@@ -21,7 +21,7 @@
 # Supported selectors:
 #   --all                 → All discovered tasks
 #   <name>                → Matches filename or PACKAGE= value
-#   <category>            → e.g. 00-core, 10-apps, 30-system
+#   <category>            → e.g. 00-core, 10-npm-apps, 30-system
 #   <NN-name.sh>          → Specific task file
 #
 # Options:
@@ -58,12 +58,13 @@ test-task.sh — Pruebas aisladas de tareas RaVN (Docker)
 Uso:
   $(basename "$0") --all                    # Todas las tareas
   $(basename "$0") <nombre|patrón>          # Una o varias por nombre
-  $(basename "$0") 10-apps                  # Todas las de una categoría
+  $(basename "$0") 10-npm-apps              # Todas las de una categoría
   $(basename "$0") hermes codex             # Varias tareas específicas
 
 Opciones:
   --dry-run     Ejecuta install() en modo simulación
   --keep        Mantiene el contenedor después de la prueba (debug)
+  --mise-version <ver>  Fija el fixture de mise para Docker/VM
   -h, --help    Muestra esta ayuda
 
 Ejemplos:
@@ -73,18 +74,18 @@ Ejemplos:
 EOF
 }
 
-get_task_test_level() {
+get_task_metadata() {
   local task_file="$1"
-  local test_level=""
+  local metadata=""
 
-  test_level=$(
+  metadata=$(
     # shellcheck disable=SC1091,SC1090
     source "${RAVN_DIR}/framework/package.sh"
     # shellcheck disable=SC1090
     source "$task_file"
-    printf '%s' "${TEST_LEVEL:-}"
+    printf '%s|%s|%s|%s' "${PACKAGE:-}" "${TEST_LEVEL:-}" "${INSTALLER_STRATEGY:-}" "${REFERENCE_ONLY:-false}"
   )
-  printf '%s' "$test_level"
+  printf '%s' "$metadata"
 }
 
 run_static_test() {
@@ -97,6 +98,8 @@ run_static_test() {
 TASKS_TO_TEST=()
 DRY_RUN=0
 KEEP_CONTAINER=0
+INCLUDE_REFERENCES=0
+MISE_FIXTURE_VERSION="${RAVN_MISE_FIXTURE_VERSION:-2026.6.11}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -115,6 +118,18 @@ while [[ $# -gt 0 ]]; do
     --keep)
       KEEP_CONTAINER=1
       shift
+      ;;
+    --include-reference)
+      INCLUDE_REFERENCES=1
+      shift
+      ;;
+    --mise-version)
+      if (($# < 2)); then
+        echo "Error: --mise-version requiere una versión." >&2
+        exit 2
+      fi
+      MISE_FIXTURE_VERSION="$2"
+      shift 2
       ;;
     -h | --help)
       print_usage
@@ -162,8 +177,15 @@ for task_file in "${TASKS_TO_TEST[@]}"; do
   echo "────────────────────────────────────────────────────────"
   echo "Probando: $rel_path"
 
-  package=$(grep -oP 'PACKAGE="\K[^"]+' "$task_file" 2> /dev/null || echo "$task_name")
-  test_level=$(get_task_test_level "$task_file")
+  metadata=$(get_task_metadata "$task_file")
+  IFS='|' read -r package test_level installer_strategy reference_only <<< "$metadata"
+  [[ -z $package ]] && package="$task_name"
+
+  if [[ ${reference_only:-false} == true && $INCLUDE_REFERENCES == 0 ]]; then
+    echo "⚠ $package → OMITIDA (reference-only; use --include-reference)"
+    UNSUPPORTED+=("$package")
+    continue
+  fi
 
   case "$test_level" in
     static)
@@ -190,13 +212,16 @@ for task_file in "${TASKS_TO_TEST[@]}"; do
       ;;
   esac
 
+  required_packages="curl git which"
+
   test_script=$(mktemp)
   cat > "$test_script" << EOF
 #!/usr/bin/env bash
 set -e
 export PATH="\$HOME/.local/bin:\$PATH"
+export OMARCHY_NPX_INSTALLER="/omarchy-npx-install"
 echo "=== Actualizando sistema base ==="
-pacman -Syu --noconfirm curl git 2>&1 | tail -3
+pacman -Syu --noconfirm ${required_packages} 2>&1 | tail -3
 
 echo "=== Ejecutando tarea: $package ==="
 
@@ -208,8 +233,22 @@ fi
 source "/package.sh" 2>/dev/null || true
 source "/hooks.sh" 2>/dev/null || true
 source "/contract.sh" 2>/dev/null || true
+source "/mise.sh" 2>/dev/null || true
+source "/mise-cli.sh" 2>/dev/null || true
+export RAVN_DIR="/"
 source "/task.sh" 2>/dev/null || true
 
+if [[ "$installer_strategy" == "mise" || "$installer_strategy" == "omarchy-npx" ]]; then
+  export RAVN_ALLOW_MISE_BOOTSTRAP=1
+  export RAVN_MISE_FIXTURE_VERSION="$MISE_FIXTURE_VERSION"
+  export RAVN_MISE_BOOTSTRAP_DIR="/tmp/ravn-mise"
+  ravn_bootstrap_mise > /dev/null
+  RAVN_MISE_BIN="\$(ravn_mise_binary)"
+  export RAVN_MISE_BIN
+  export PATH="\$(dirname "\$RAVN_MISE_BIN"):\$PATH"
+  ravn_verify_mise > /dev/null
+  printf 'mise fixture: %s\n' "\$RAVN_EVIDENCE_MISE_VERSION"
+fi
 if declare -f install >/dev/null; then
   if (( $DRY_RUN == 1 )); then
     echo "Modo dry-run activado"
@@ -258,9 +297,12 @@ EOF
   if docker run "${docker_args[@]}" \
        -v "$task_file:/task.sh:ro" \
        -v "$GLOBAL_FN:/global_fn.sh:ro" \
+       -v "$RAVN_DIR/omarchy-npx-install:/omarchy-npx-install:ro" \
        -v "$RAVN_DIR/framework/package.sh:/package.sh:ro" \
        -v "$RAVN_DIR/framework/hooks.sh:/hooks.sh:ro" \
        -v "$RAVN_DIR/framework/contract.sh:/contract.sh:ro" \
+       -v "$RAVN_DIR/framework/mise.sh:/mise.sh:ro" \
+       -v "$RAVN_DIR/framework/mise-cli.sh:/mise-cli.sh:ro" \
        -v "$test_script:/test.sh:ro" \
        "$DOCKER_IMAGE" bash /test.sh; then
     echo "✓ $package → PASÓ"
