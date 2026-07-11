@@ -11,7 +11,7 @@ DEPENDS=()
 INTERACTIVE=false
 
 check() {
-  command -v ghui &> /dev/null
+  command -v ghui &>/dev/null
 }
 
 install() {

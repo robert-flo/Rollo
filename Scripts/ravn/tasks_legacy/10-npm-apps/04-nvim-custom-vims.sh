@@ -13,7 +13,7 @@ INTERACTIVE=false
 check() {
   # Skip if both configurations are already cloned and launchers are present
   if [[ -d "$HOME/.config/vims/adivim" && -d "$HOME/.config/vims/2kvim" ]] &&
-     [[ -x "$HOME/.local/bin/adivim" && -x "$HOME/.local/bin/2kvim" ]]; then
+    [[ -x "$HOME/.local/bin/adivim" && -x "$HOME/.local/bin/2kvim" ]]; then
     return 0
   fi
   return 1
@@ -41,7 +41,7 @@ install() {
 
   # 3. Crear lanzador adivim
   step "Creando lanzador ~/.local/bin/adivim..."
-  cat << 'EOF' > "$HOME/.local/bin/adivim"
+  cat <<'EOF' >"$HOME/.local/bin/adivim"
 #!/usr/bin/env bash
 
 export NVIM_APPNAME="vims/adivim"
@@ -51,7 +51,7 @@ EOF
 
   # 4. Crear lanzador 2kvim
   step "Creando lanzador ~/.local/bin/2kvim..."
-  cat << 'EOF' > "$HOME/.local/bin/2kvim"
+  cat <<'EOF' >"$HOME/.local/bin/2kvim"
 #!/usr/bin/env bash
 
 export NVIM_APPNAME="vims/2kvim"

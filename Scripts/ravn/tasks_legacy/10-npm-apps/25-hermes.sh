@@ -10,7 +10,7 @@ DEPENDS=()
 INTERACTIVE=false
 
 check() {
-  command -v hermes &> /dev/null
+  command -v hermes &>/dev/null
 }
 
 install() {
@@ -19,9 +19,9 @@ install() {
     return 0
   fi
 
-  if ! command -v curl &> /dev/null; then
+  if ! command -v curl &>/dev/null; then
     echo "Error: curl not found" >&2
     return 1
   fi
-#  curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
+  #  curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
 }

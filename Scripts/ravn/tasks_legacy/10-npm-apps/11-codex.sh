@@ -11,7 +11,7 @@ DEPENDS=()
 INTERACTIVE=false
 
 check() {
-  command -v codex &> /dev/null
+  command -v codex &>/dev/null
 }
 
 install() {

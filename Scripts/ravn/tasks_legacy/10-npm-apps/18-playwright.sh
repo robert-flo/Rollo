@@ -11,7 +11,7 @@ DEPENDS=()
 INTERACTIVE=false
 
 check() {
-  command -v playwright-cli &> /dev/null
+  command -v playwright-cli &>/dev/null
 }
 
 install() {

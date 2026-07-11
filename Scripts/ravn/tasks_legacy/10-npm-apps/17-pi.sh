@@ -14,11 +14,11 @@ check() {
   if [[ -x ${mise_shim_dir}/omp || -x ${mise_shim_dir}/pi ]]; then
     return 0
   fi
-  command -v omp &> /dev/null || command -v pi &> /dev/null
+  command -v omp &>/dev/null || command -v pi &>/dev/null
 }
 
 install() {
-  if ! command -v mise &> /dev/null; then
+  if ! command -v mise &>/dev/null; then
     echo "Error: mise not found" >&2
     return 1
   fi

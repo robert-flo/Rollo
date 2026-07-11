@@ -31,7 +31,7 @@ check() {
 install() {
   local installer="${OMARCHY_NPX_INSTALLER:-${RAVN_DIR}/omarchy-npx-install}"
 
-  if ! command -v mise > /dev/null 2>&1; then
+  if ! command -v mise >/dev/null 2>&1; then
     echo "Error: mise no está instalado" >&2
     return 1
   fi

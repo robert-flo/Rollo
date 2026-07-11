@@ -11,7 +11,7 @@ DEPENDS=()
 INTERACTIVE=false
 
 check() {
-  command -v opencode &> /dev/null
+  command -v opencode &>/dev/null
 }
 
 install() {

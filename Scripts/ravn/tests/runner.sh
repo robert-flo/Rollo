@@ -65,6 +65,14 @@ else
 fi
 [[ ${TASK_RESULTS[0]} == "resettable:reset" ]]
 
+if reset_selected_tasks resettable </dev/null; then
+  printf 'FAIL: non-interactive reset without --yes was accepted\n' >&2
+  exit 1
+else
+  :
+fi
+[[ ${TASK_RESULTS[0]} == "resettable:reset-refused" ]]
+
 if reset_selected_tasks legacy --yes; then
   exit 1
 else
@@ -102,7 +110,7 @@ fi
 unset RAVN_TEST_UPDATE_RESULT
 
 blocked_state_home="${XDG_STATE_HOME}/blocked"
-printf '%s' 'not a directory' > "$blocked_state_home"
+printf '%s' 'not a directory' >"$blocked_state_home"
 XDG_STATE_HOME="$blocked_state_home"
 if run_selected_tasks verify verified; then
   printf 'FAIL: verification passed without persisted evidence\n' >&2
