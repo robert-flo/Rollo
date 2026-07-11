@@ -1,136 +1,248 @@
-# Purpose
+# RaVN task development guide
 
-Modular bootstrap framework (RaVN Framework v1) that replaces monolithic installer scripts with convention-driven, auto-discovered task modules. Orchestrates final system configuration and application setup through a lifecycle pipeline.
+This directory contains the RaVN task runner. An agent adding or migrating a
+task must treat the task's observable behavior as the deliverable: the task
+must install the tool, verify that the tool actually runs, and fail clearly
+when dependencies or postconditions are missing.
 
-# Ownership
+## Where tasks belong
 
-Owned by the RaVN installer pipeline. Called by `install.sh` as a replacement for `install_fnl.sh` + `install_custom.sh` during the final configuration phase.
+Active task modules live under:
 
-# Local Contracts
-
-- **Shebang**: All scripts use `#!/usr/bin/env bash`.
-- **Module contract**: Every task under `tasks/` must define `PACKAGE` and `install()`. Optional: `DESCRIPTION`, `CATEGORY`, `DEPENDS`, `INTERACTIVE`, `before()`, `check()`, `after()`, `cleanup()`. Defaults are provided by `framework/package.sh`.
-- **Discovery**: Modules are auto-discovered via `find tasks/ -name "*.sh" | sort`. No hardcoded arrays or registration functions.
-- **Naming**: Category directories and files both use numeric prefixes for ordering (e.g., `00-core/01-omarchy.sh`). Categories sort first, then files within each category.
-- **Active scope**: `10-npm-apps/` contains the canonical Codex, Copilot, and OpenCode descriptors. `00-core/` and `30-system/` are quarantined under `tasks_legacy/` until canonical replacements are implemented.
-- **Omarchy channel**: `00-core/00-omarchy-repo.sh` pins the `[omarchy]` repository to the `edge` channel and is idempotent — it skips when the correct block is already present in `/etc/pacman.conf`. It does not replace the existing `pacman.conf` or the system mirrorlist. The repository is configured early (before `install_pkg.sh`) so that Omarchy packages can be resolved during the main install phase.
-- **Shared helpers**: `lib/omarchy.sh` contains `setup_omarchy_repo()` and `omarchy_repo_is_configured()` used by both the early repo task and the full `00-core/01-omarchy.sh` task.
-- **Lifecycle order**: `before → check → install → after → cleanup`. The `check()` function returns 0 to skip, 1 to proceed.
-- **Interactive modules**: Set `INTERACTIVE=true` in the module header. The pipeline prompts for confirmation — modules must not prompt themselves.
-- **Logging**: Per-package logs go to `cache/logs/<package>.log`.
-- **State**: `cache/state/` is reserved for future persistent state via `state_get`/`state_set`.
-- **Runtime library**: `global_fn.sh` is symlinked from the parent `Scripts/` directory and provides logging, spinners, counters, retry, download, and git helpers.
-- **Counters**: Modules must not call `count_ok`/`count_fail`/`count_skip` directly. The pipeline handles counter increments based on lifecycle outcomes.
-- **Shell Quality Gate**: **Obligatorio** ejecutar `shellcheck` (y `shfmt`) en **todos** los archivos `.sh` antes de hacer commit. El pre-commit hook bloquea cualquier warning de shellcheck. No se permiten excepciones sin justificación explícita.
-
-# Work Guidance
-
-## Key files
-
-| File | Role |
-|---|---|
-| `setup.sh` | Thin entrypoint — sources global_fn.sh, loads framework, calls main() |
-| `global_fn.sh` | Symlink → `../global_fn.sh` (runtime library) |
-| `framework/package.sh` | Default module contract (lifecycle stubs) |
-| `framework/discover.sh` | `discover_tasks()` — find-based module discovery |
-| `framework/pipeline.sh` | `run_task()` + `run_pipeline()` — lifecycle orchestration |
-| `framework/hooks.sh` | `hook_defined()` + `run_hook()` — optional hook detection |
-| `framework/state.sh` | `state_get/set/has` — key-value state (skeleton) |
-| `framework/retry.sh` | Compatibility layer verifying `retry()` availability |
-
-## Subdirectories
-
-- `tasks/10-npm-apps/` — npm application configs and CLI tools (Spicetify, Dotbare, TUI CLIs via npx)
-- `tasks/20-shell/` — Shell environment modules (reserved)
-- `tasks_legacy/00-core/` and `tasks_legacy/30-system/` — Quarantined core and system tasks preserved for later migration.
-- `config/` — Configuration files (`.conf` format)
-- `cache/logs/` — Per-package log output (gitignored)
-- `cache/state/` — Persistent state data (gitignored)
-- `docs/` — Documentation
-
-## Adding a task module
-
-1. Create `tasks/<category>/<NN>-<name>.sh` with `#!/usr/bin/env bash`.
-2. Define `PACKAGE`, `DESCRIPTION`, and at minimum `check()` + `install()`.
-3. The framework discovers it on next run. No registration or list updates needed.
-4. Update this AGENTS.md only if adding a new category directory.
-
-## Testing Tasks in Isolation (Recommended)
-
-**IMPORTANTE:** Todas las tareas nuevas o modificadas deben probarse en un entorno aislado con Docker antes de ser consideradas listas.
-
-### Script de pruebas
-
-El script `test-task.sh` permite validar cualquier tarea de forma reproducible y segura.
-
-**Ubicación:** `Scripts/ravn/test-task.sh`
-
-### Comandos de uso
-
-```bash
-# Probar TODAS las tareas
-./test-task.sh --all
-
-# Probar una tarea por nombre de PACKAGE o archivo
-./test-task.sh hermes
-./test-task.sh 25-hermes
-
-# Probar todas las tareas de una categoría
-./test-task.sh 10-npm-apps
-
-# Probar varias tareas a la vez
-./test-task.sh hermes codex grok playwright-cli
-
-# Ejecutar en modo simulación (dry-run)
-./test-task.sh hermes --dry-run
-
-# Mantener el contenedor para depuración
-./test-task.sh hermes --keep
+```text
+Scripts/ravn/tasks/<category>/<number>-<name>.sh
 ```
-### Flujo recomendado al crear una nueva tarea
 
-1. Crea el archivo siguiendo la convención: `tasks/<categoría>/<NN>-<nombre>.sh`
-2. Implementa al menos `PACKAGE`, `check()` e `install()`
-3. Ejecuta la prueba aislada:
-   ```bash
-   ./test-task.sh <nombre-de-la-tarea>
-   ```
-4. Confirma que aparece `✓ PASÓ`
-5. Si falla, usa `--keep` para inspeccionar el contenedor
+Use the existing category that matches the responsibility:
 
-### Cómo funciona internamente
+- `tasks/10-npm-apps/` — npm CLIs and npm-backed application tools.
+- `tasks/20-shell/` — shell tools and shell configuration tasks.
+- Add a new category only when an existing category cannot express the task;
+  document the new category here and update discovery tests.
 
-- Levanta un contenedor limpio de `archlinux:latest`
-- Copia la tarea dentro del contenedor
-- Ejecuta `install()` de la tarea
-- Verifica que `check()` retorne éxito después de la instalación
-- Reporta resultados claros (PASÓ / FALLÓ)
+Legacy modules live under `tasks_legacy/`. Do not edit or delete a legacy task
+while migrating it. Add one active replacement, validate it, and remove or
+quarantine the legacy module only through an explicitly reviewed migration.
 
-Este enfoque fue validado exitosamente con el módulo `25-hermes.sh`.
+Files are discovered automatically with `find tasks/ -name "*.sh" | sort`.
+There is no task registry to edit. Numeric prefixes control ordering, so retain
+the legacy task's number when the replacement is a one-for-one migration.
 
-### Beneficios
-
-- Pruebas 100% aisladas (no modifica el sistema del desarrollador)
-- Fácil de usar al agregar tareas nuevas
-- Soporta pruebas masivas (`--all`) o selectivas
-- Consistente con el método usado para validar Hermes
-
-
-# Verification
-
-**Obligatorio antes de cualquier commit:**
+For issue work, create the worktree with:
 
 ```bash
-# 1. Verificación de sintaxis
-find Scripts/ravn -name "*.sh" -exec bash -n {} \;
+/home/ravn/.local/bin/git-issue-worktree <issue-number> <slug> \
+  -r /home/ravn/Work/Rollo/dev -B dev
+```
 
-# 2. Shellcheck + shfmt (pre-commit hook)
-shellcheck Scripts/ravn/**/*.sh
+Do not commit directly to `dev`; use the issue worktree, then push a branch and
+merge through a pull request.
+
+## Canonical npm CLI task shape
+
+For a versioned npm CLI, the task file should contain only the CLI-specific
+identity and the shared mise entrypoint:
+
+```bash
+#!/usr/bin/env bash
+
+# shellcheck disable=SC2034
+CLI_PACKAGE="@openai/codex"
+# shellcheck disable=SC2034
+CLI_COMMAND="codex"
+
+ravn_mise_cli_task
+```
+
+Replace the values with the actual npm package and executable command. For
+example, GitHub Copilot uses `CLI_PACKAGE="@github/copilot"` and
+`CLI_COMMAND="copilot"`.
+
+### Meaning of the two required fields
+
+`CLI_PACKAGE` is the exact npm package specifier passed to mise. It may include
+an npm scope, such as `@openai/codex`. Do not use the executable name when the
+package name differs. Do not add `npm:` here; the shared backend adds that
+prefix when writing `mise.toml`.
+
+`CLI_COMMAND` is the executable the package exposes and the command used for
+real verification. It is also used to derive the task identity, the wrapper
+name in `$HOME/.local/bin`, and the task-owned state directory. It must be the
+actual command available after installation, not a display name.
+
+The `# shellcheck disable=SC2034` comments are intentional: the variables are
+read by the shared backend after the task file is sourced. Keep the directive
+on the variable declaration; do not disable ShellCheck for the whole file.
+
+Do not copy the old `omarchy-npx-install` implementation into a new canonical
+task. `mise` is the standard backend for versioned npm CLIs. The shared
+`ravn_mise_cli_task` entrypoint loads `framework/mise-cli.sh` and supplies the
+canonical lifecycle, including dependency handling, install, real command
+verification, update, rollback, reset, and evidence recording.
+
+If a package cannot use the generic mise backend, stop and document the reason
+in the issue before introducing a custom implementation.
+
+## Task contract and ownership
+
+The shared backend populates the task metadata and lifecycle functions. A
+canonical task must therefore be executable without shell initialization and
+must not open a TUI or prompt for credentials.
+
+The backend owns these resources for a CLI command `<command>`:
+
+- mise configuration and installed tool state under
+  `${XDG_DATA_HOME:-$HOME/.local/share}/ravn/tasks/<command>`;
+- the single active wrapper at `$HOME/.local/bin/<command>`;
+- task evidence and audit state managed by the runner.
+
+The active wrapper must be the only exposed command for the task. Do not create
+additional global symlinks or wrappers. Keep the legacy descriptor unchanged
+until the replacement has passed validation.
+
+The generic backend uses `latest` for explicit update policy, not as a reason
+for ordinary `run` to update a verified installation. It manages Node through
+mise, enables required npm lifecycle scripts, verifies the real command, and
+retains the previous verified configuration where rollback is possible.
+
+## Mandatory testing workflow
+
+Testing is the most important part of adding a task. A task is not complete
+because npm exited successfully or because a wrapper file exists. Every new or
+migrated task must prove that the installed command is usable in a clean
+environment.
+
+Run these checks from the repository root or adjust paths accordingly.
+
+### 1. Static checks first
+
+```bash
+bash -n Scripts/ravn/tasks/10-npm-apps/<number>-<name>.sh
+shellcheck Scripts/ravn/tasks/10-npm-apps/<number>-<name>.sh
+shfmt -d Scripts/ravn/tasks/10-npm-apps/<number>-<name>.sh
+git diff --check
+```
+
+Fix every ShellCheck warning. Do not use a broad disable directive to hide a
+real problem. Use the repository's Bash style: quote command arguments, use
+`[[ ]]` for tests, localize function variables, and preserve non-zero statuses.
+
+### 2. Discovery and deterministic framework tests
+
+```bash
+bash Scripts/ravn/tests/discovery.sh
+bash Scripts/ravn/tests/contract.sh
+bash Scripts/ravn/tests/runner.sh
+bash Scripts/ravn/tests/state.sh
+bash Scripts/ravn/tests/mise.sh
+bash Scripts/ravn/tests/menu.sh
+bash Scripts/ravn/tests/opencode-contract.sh
+```
+
+If adding a canonical task changes the discovered task count, update the
+discovery assertion and verify that no `tasks_legacy` file is discovered.
+Never weaken the test to make a task disappear.
+
+### 3. Isolated Docker test — required
+
+For an npm CLI, run the real isolated test:
+
+```bash
+bash Scripts/ravn/test-task.sh <command>
+```
+
+For example:
+
+```bash
+bash Scripts/ravn/test-task.sh codex
+bash Scripts/ravn/test-task.sh copilot
+bash Scripts/ravn/test-task.sh 10-npm-apps
+```
+
+This test starts a clean Arch container, bootstraps the pinned mise fixture,
+installs Node and the npm package, invokes the task's `install()`, and then
+executes the task's real `verify()` path. A successful result must say
+`<package> → PASÓ`; a merely successful installer exit is insufficient.
+
+Use `--mise-version <version>` only when reproducing a known fixture issue.
+Use `--keep` when a failure needs container inspection; remove the container
+after debugging. Use `--dry-run` only to inspect control flow — it does not
+prove installation or command usability.
+
+Reference-only tasks are intentionally skipped unless
+`--include-reference` is supplied. A skipped reference task is not a failed
+active task, but it also is not evidence that the canonical task works.
+
+### 4. Lifecycle behavior to exercise
+
+For every mise CLI task, validate as many of these operations as the backend
+supports:
+
+```bash
+bash Scripts/ravn/setup.sh run <command>
+bash Scripts/ravn/setup.sh verify <command>
+bash Scripts/ravn/setup.sh check-updates <command>
+bash Scripts/ravn/setup.sh update <command>
+bash Scripts/ravn/setup.sh reset <command>
+```
+
+At minimum, prove:
+
+1. clean install in an empty state directory;
+2. real `<command> --version` (or the task's declared verification arguments)
+   from the generated wrapper;
+3. a second `run`/verification is idempotent and does not unexpectedly update;
+4. update is explicit and records the resolved package and Node versions;
+5. a failed candidate does not replace the previous verified version;
+6. reset removes only resources owned by this task;
+7. verification after reset reports absence or a dependency state; and
+8. reinstall after reset succeeds.
+
+When a scenario cannot run because the host lacks mise, network access, or a
+required platform, record it as `SKIPPED`, `UNSUPPORTED`, or `NOT_RUN` with the
+reason. Never report it as `PASS`, and never turn a missing dependency into a
+successful install.
+
+### 5. Full repository gates before commit
+
+```bash
+find Scripts/ravn -name '*.sh' -type f -exec bash -n {} +
+find Scripts/ravn -name '*.sh' -type f -print0 | xargs -0 shellcheck
 shfmt -d Scripts/ravn
-
-# 3. Dry-run del pipeline
 flg_DryRun=1 bash Scripts/ravn/setup.sh
-
-# 4. Pruebas aisladas de tareas (recomendado)
-./test-task.sh --all
+bash Scripts/ravn/test-task.sh --all
+git diff --check
 ```
+
+The full Docker matrix can require network access and may take time. If it
+cannot run, report the exact command and reason in the handoff; do not claim
+the task is fully validated. Run the focused task test again after every fix.
+
+## Failure diagnosis
+
+- `dependency-missing`: mise or another required runtime is unavailable;
+  verify the injected binary path and bootstrap policy.
+- install failure: inspect the task log and the mise/npm resolution output;
+  do not create a wrapper manually.
+- verification failure: run the wrapper directly with its verification args;
+  check the resolved package version, Node version, and lifecycle scripts.
+- `update-failed`: confirm the previous verified configuration remains active.
+- `rollback-failed`: treat as a blocking reliability failure; do not merge.
+- Docker `NO VERIFICABLE`: inspect `TEST_LEVEL` and whether `verify()` is
+  available; do not interpret it as success.
+
+## Completion checklist
+
+Before opening a PR, confirm all of the following:
+
+- The task is under the correct active category and has the correct numeric
+  filename prefix.
+- `CLI_PACKAGE` is the exact npm package and `CLI_COMMAND` is the real binary.
+- The task uses `ravn_mise_cli_task` unless an issue documents an exception.
+- The legacy task is preserved and unrelated tasks are untouched.
+- Static, deterministic, and isolated Docker checks pass.
+- The real command was executed from a clean environment.
+- Any skipped or unsupported matrix layer is explicitly reported.
+- The issue, commit, PR, and merge target are linked.
+- The PR is merged into the recorded base branch before deleting its worktree
+  or local/remote topic branches.
