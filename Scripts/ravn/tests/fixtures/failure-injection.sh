@@ -16,6 +16,10 @@ check() {
 }
 
 install() {
+  if [[ ${RAVN_TEST_DEPENDENCY_RESULT:-success} != "success" ]]; then
+    RAVN_DEPENDENCY_MISSING=true
+    return 1
+  fi
   [[ ${RAVN_TEST_INSTALL_RESULT:-success} == "success" ]]
 }
 

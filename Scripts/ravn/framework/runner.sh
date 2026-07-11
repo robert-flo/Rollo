@@ -105,7 +105,7 @@ _runner_record() {
   local state=""
 
   TASK_RESULTS+=("${name}:${result}")
-  if [[ $result == "failed" || $result == "unverified" ]]; then
+  if [[ $result == "failed" || $result == "unverified" || $result == "dependency-missing" ]]; then
     TASK_FAILURES+=("$name")
   fi
 
@@ -116,6 +116,7 @@ _runner_record() {
     disabled | reset) state="absent" ;;
     unverified | reset-unsupported) state="partial" ;;
     failed | reset-failed) state="broken" ;;
+    dependency-missing) state="dependency-missing" ;;
     update-failed) state="update-failed" ;;
     rollback-failed) state="rollback-failed" ;;
     *) return 0 ;;
@@ -165,7 +166,11 @@ verify_selected_task() {
 
   _runner_redact_log "$log"
   error_msg "${name}: Verificación falló. Log: ${log}"
-  _runner_record "$name" "failed" 1
+  if [[ ${RAVN_DEPENDENCY_MISSING:-false} == true ]]; then
+    _runner_record "$name" "dependency-missing" 1
+  else
+    _runner_record "$name" "failed" 1
+  fi
   return 1
 }
 
@@ -197,7 +202,11 @@ run_selected_task() {
   if ! install >> "$log" 2>&1; then
     _runner_redact_log "$log"
     error_msg "${name}: Instalación falló. Log: ${log}"
-    _runner_record "$name" "failed" 1
+    if [[ ${RAVN_DEPENDENCY_MISSING:-false} == true ]]; then
+      _runner_record "$name" "dependency-missing" 1
+    else
+      _runner_record "$name" "failed" 1
+    fi
     return 1
   fi
 
