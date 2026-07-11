@@ -133,6 +133,16 @@ TEST_LEVEL="isolated"             # static | isolated | live
 
 The lifecycle contract requires `check()`, `install()`, and `verify()`. A task only supports reset when it implements both `reset()` and `verify_reset()`. Existing tasks without the metadata are treated as legacy until migrated; they must not be presented as fully verified.
 
+## Non-interactive Baseline Mode
+
+The dotfiles installer must invoke the entrypoint explicitly with:
+
+```bash
+bash Scripts/ravn/setup.sh --baseline
+```
+
+This mode discovers only tasks with `TASK_FAMILY="baseline"`, never opens a menu, never prompts, and returns a failure status when a selected baseline task cannot be verified. If no baseline tasks have been migrated yet, it exits successfully without running optional tasks.
+
 ## Running
 
 ```bash

@@ -25,6 +25,12 @@ task_name() {
   printf '%s' "${PACKAGE:-$(basename "$file" .sh)}"
 }
 
+task_family() {
+  local file="$1"
+  load_task "$file"
+  printf '%s' "${TASK_FAMILY:-}"
+}
+
 task_is_disabled() {
   local name="$1"
 
@@ -37,6 +43,11 @@ _runner_match_task() {
   local selector="$2"
   local name=""
   name=$(task_name "$file")
+
+  if [[ $selector == "BASELINE" ]]; then
+    [[ $(task_family "$file") == "baseline" ]]
+    return
+  fi
 
   [[ $selector == "ALL" || $selector == "$name" || $selector == "$(basename "$file" .sh)" || $selector == "$file" ]]
 }
@@ -60,13 +71,16 @@ resolve_task_files() {
       fi
     done
 
-    if ((found == 0)); then
+    if ((found == 0)) && [[ $selector != "BASELINE" ]]; then
       error_msg "Tarea no encontrada: ${selector}"
       return 1
     fi
   done
 
-  mapfile -t RESOLVED_TASKS < <(printf '%s\n' "${selected[@]}" | sort -u)
+  RESOLVED_TASKS=()
+  if ((${#selected[@]} > 0)); then
+    mapfile -t RESOLVED_TASKS < <(printf '%s\n' "${selected[@]}" | sort -u)
+  fi
 }
 
 _runner_log_dir() {

@@ -37,8 +37,13 @@ done
 main() {
   local action="${1:-}"
 
-  if [[ $action == "verify" || $action == "run" ]]; then
-    shift
+  if [[ $action == "verify" || $action == "run" || $action == "baseline" || $action == "--baseline" ]]; then
+    if [[ $action == "baseline" || $action == "--baseline" ]]; then
+      action="run"
+      set -- BASELINE
+    else
+      shift
+    fi
     discover_tasks
     run_selected_tasks "$action" "$@"
     return

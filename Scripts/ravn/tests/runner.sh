@@ -5,6 +5,7 @@ RAVN_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 TASKS=(
   "${RAVN_DIR}/tests/fixtures/verified.sh"
   "${RAVN_DIR}/tests/fixtures/legacy.sh"
+  "${RAVN_DIR}/tests/fixtures/baseline.sh"
 )
 
 # shellcheck disable=SC1091
@@ -41,5 +42,12 @@ else
   :
 fi
 [[ ${TASK_RESULTS[0]} == "legacy:unverified" ]]
+
+if run_selected_tasks run BASELINE; then
+  :
+else
+  exit 1
+fi
+[[ ${TASK_RESULTS[0]} == "baseline:verified" ]]
 
 printf 'PASS: direct task runner\n'
