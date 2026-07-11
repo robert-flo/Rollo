@@ -52,7 +52,7 @@ GLOBAL_FN="${RAVN_DIR}/global_fn.sh"
 DOCKER_IMAGE="archlinux:latest"
 
 print_usage() {
-  cat << EOF
+  cat <<EOF
 test-task.sh — Pruebas aisladas de tareas RaVN (Docker)
 
 Uso:
@@ -103,51 +103,51 @@ MISE_FIXTURE_VERSION="${RAVN_MISE_FIXTURE_VERSION:-2026.6.11}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --all)
-      mapfile -t TASKS_TO_TEST < <(find "$TASKS_DIR" -name "*.sh" | sort)
-      shift
-      ;;
-    ALL | all)
-      mapfile -t TASKS_TO_TEST < <(find "$TASKS_DIR" -name "*.sh" | sort)
-      shift
-      ;;
-    --dry-run)
-      DRY_RUN=1
-      shift
-      ;;
-    --keep)
-      KEEP_CONTAINER=1
-      shift
-      ;;
-    --include-reference)
-      INCLUDE_REFERENCES=1
-      shift
-      ;;
-    --mise-version)
-      if (($# < 2)); then
-        echo "Error: --mise-version requiere una versión." >&2
-        exit 2
+  --all)
+    mapfile -t TASKS_TO_TEST < <(find "$TASKS_DIR" -name "*.sh" | sort)
+    shift
+    ;;
+  ALL | all)
+    mapfile -t TASKS_TO_TEST < <(find "$TASKS_DIR" -name "*.sh" | sort)
+    shift
+    ;;
+  --dry-run)
+    DRY_RUN=1
+    shift
+    ;;
+  --keep)
+    KEEP_CONTAINER=1
+    shift
+    ;;
+  --include-reference)
+    INCLUDE_REFERENCES=1
+    shift
+    ;;
+  --mise-version)
+    if (($# < 2)); then
+      echo "Error: --mise-version requiere una versión." >&2
+      exit 2
+    fi
+    MISE_FIXTURE_VERSION="$2"
+    shift 2
+    ;;
+  -h | --help)
+    print_usage
+    exit 0
+    ;;
+  *)
+    if [[ -d "$TASKS_DIR/$1" ]]; then
+      mapfile -t found < <(find "$TASKS_DIR/$1" -name "*.sh" | sort)
+      TASKS_TO_TEST+=("${found[@]}")
+    else
+      mapfile -t found < <(find "$TASKS_DIR" -name "*${1}*.sh" | sort)
+      if [[ ${#found[@]} -eq 0 ]]; then
+        mapfile -t found < <(grep -rl "PACKAGE=.*${1}" "$TASKS_DIR" 2>/dev/null | sort)
       fi
-      MISE_FIXTURE_VERSION="$2"
-      shift 2
-      ;;
-    -h | --help)
-      print_usage
-      exit 0
-      ;;
-    *)
-      if [[ -d "$TASKS_DIR/$1" ]]; then
-        mapfile -t found < <(find "$TASKS_DIR/$1" -name "*.sh" | sort)
-        TASKS_TO_TEST+=("${found[@]}")
-      else
-        mapfile -t found < <(find "$TASKS_DIR" -name "*${1}*.sh" | sort)
-        if [[ ${#found[@]} -eq 0 ]]; then
-          mapfile -t found < <(grep -rl "PACKAGE=.*${1}" "$TASKS_DIR" 2> /dev/null | sort)
-        fi
-        TASKS_TO_TEST+=("${found[@]}")
-      fi
-      shift
-      ;;
+      TASKS_TO_TEST+=("${found[@]}")
+    fi
+    shift
+    ;;
   esac
 done
 
@@ -178,7 +178,7 @@ for task_file in "${TASKS_TO_TEST[@]}"; do
   echo "Probando: $rel_path"
 
   metadata=$(get_task_metadata "$task_file")
-  IFS='|' read -r package test_level installer_strategy reference_only <<< "$metadata"
+  IFS='|' read -r package test_level installer_strategy reference_only <<<"$metadata"
   [[ -z $package ]] && package="$task_name"
 
   if [[ ${reference_only:-false} == true && $INCLUDE_REFERENCES == 0 ]]; then
@@ -188,34 +188,34 @@ for task_file in "${TASKS_TO_TEST[@]}"; do
   fi
 
   case "$test_level" in
-    static)
-      if run_static_test "$task_file"; then
-        echo "✓ $package → PASÓ (static)"
-        PASSED+=("$package")
-      else
-        echo "✗ $package → FALLÓ (static)"
-        FAILED+=("$package")
-      fi
-      continue
-      ;;
-    live)
-      echo "⚠ $package → NO VERIFICABLE (requiere live)"
-      UNSUPPORTED+=("$package")
-      continue
-      ;;
-    "" | isolated)
-      ;;
-    *)
-      echo "⚠ $package → NO VERIFICABLE (TEST_LEVEL inválido: $test_level)"
-      UNSUPPORTED+=("$package")
-      continue
-      ;;
+  static)
+    if run_static_test "$task_file"; then
+      echo "✓ $package → PASÓ (static)"
+      PASSED+=("$package")
+    else
+      echo "✗ $package → FALLÓ (static)"
+      FAILED+=("$package")
+    fi
+    continue
+    ;;
+  live)
+    echo "⚠ $package → NO VERIFICABLE (requiere live)"
+    UNSUPPORTED+=("$package")
+    continue
+    ;;
+  "" | isolated)
+    ;;
+  *)
+    echo "⚠ $package → NO VERIFICABLE (TEST_LEVEL inválido: $test_level)"
+    UNSUPPORTED+=("$package")
+    continue
+    ;;
   esac
 
   required_packages="curl git which"
 
   test_script=$(mktemp)
-  cat > "$test_script" << EOF
+  cat >"$test_script" <<EOF
 #!/usr/bin/env bash
 set -e
 export PATH="\$HOME/.local/bin:\$PATH"
@@ -295,16 +295,16 @@ EOF
   fi
 
   if docker run "${docker_args[@]}" \
-       -v "$task_file:/task.sh:ro" \
-       -v "$GLOBAL_FN:/global_fn.sh:ro" \
-       -v "$RAVN_DIR/omarchy-npx-install:/omarchy-npx-install:ro" \
-       -v "$RAVN_DIR/framework/package.sh:/package.sh:ro" \
-       -v "$RAVN_DIR/framework/hooks.sh:/hooks.sh:ro" \
-       -v "$RAVN_DIR/framework/contract.sh:/contract.sh:ro" \
-       -v "$RAVN_DIR/framework/mise.sh:/mise.sh:ro" \
-       -v "$RAVN_DIR/framework/mise-cli.sh:/mise-cli.sh:ro" \
-       -v "$test_script:/test.sh:ro" \
-       "$DOCKER_IMAGE" bash /test.sh; then
+    -v "$task_file:/task.sh:ro" \
+    -v "$GLOBAL_FN:/global_fn.sh:ro" \
+    -v "$RAVN_DIR/omarchy-npx-install:/omarchy-npx-install:ro" \
+    -v "$RAVN_DIR/framework/package.sh:/package.sh:ro" \
+    -v "$RAVN_DIR/framework/hooks.sh:/hooks.sh:ro" \
+    -v "$RAVN_DIR/framework/contract.sh:/contract.sh:ro" \
+    -v "$RAVN_DIR/framework/mise.sh:/mise.sh:ro" \
+    -v "$RAVN_DIR/framework/mise-cli.sh:/mise-cli.sh:ro" \
+    -v "$test_script:/test.sh:ro" \
+    "$DOCKER_IMAGE" bash /test.sh; then
     echo "✓ $package → PASÓ"
     PASSED+=("$package")
   else

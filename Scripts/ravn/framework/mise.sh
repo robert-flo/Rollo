@@ -48,7 +48,7 @@ ravn_bootstrap_mise() {
   local url=""
 
   if mise_bin=$(ravn_mise_binary); then
-    if ravn_verify_mise > /dev/null; then
+    if ravn_verify_mise >/dev/null; then
       printf '%s' "$mise_bin"
       return 0
     fi
@@ -64,12 +64,12 @@ ravn_bootstrap_mise() {
   mise_bin="${bootstrap_dir}/mise"
   machine=$(uname -m)
   case "$machine" in
-    x86_64) architecture="x64" ;;
-    aarch64) architecture="arm64" ;;
-    *)
-      printf '%s\n' "Error: arquitectura no soportada para mise fixture: ${machine}" >&2
-      return 1
-      ;;
+  x86_64) architecture="x64" ;;
+  aarch64) architecture="arm64" ;;
+  *)
+    printf '%s\n' "Error: arquitectura no soportada para mise fixture: ${machine}" >&2
+    return 1
+    ;;
   esac
 
   mkdir -p "$bootstrap_dir"
@@ -79,7 +79,7 @@ ravn_bootstrap_mise() {
 
   RAVN_MISE_BIN="$mise_bin"
   export RAVN_MISE_BIN
-  if ! ravn_verify_mise > /dev/null; then
+  if ! ravn_verify_mise >/dev/null; then
     printf '%s\n' "Error: mise fixture descargado no pudo verificarse." >&2
     return 1
   fi

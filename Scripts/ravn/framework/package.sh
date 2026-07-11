@@ -54,13 +54,13 @@ ravn_mise_cli_task() {
 # after   — Post-install configuration.
 # cleanup — Cleanup temporary resources (always runs, even on failure).
 
-before()  { :; }
-check()   { return 1; }
+before() { :; }
+check() { return 1; }
 install() { :; }
-verify()  { :; }
+verify() { :; }
 check_updates() { :; }
-update()  { :; }
-after()   { :; }
+update() { :; }
+after() { :; }
 cleanup() { :; }
-reset()   { :; }
+reset() { :; }
 verify_reset() { :; }

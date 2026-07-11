@@ -22,7 +22,7 @@ if ravn_record_task_evidence opencode verify invalid 1; then
 fi
 
 log_file="${XDG_STATE_HOME}/test.log"
-printf '%s\n' 'API_KEY=super-secret' 'Authorization: Bearer token-value' > "$log_file"
+printf '%s\n' 'API_KEY=super-secret' 'Authorization: Bearer token-value' >"$log_file"
 ravn_redact_log "$log_file"
 grep -Fq 'API_KEY=[REDACTED]' "$log_file"
 grep -Fq 'Bearer [REDACTED]' "$log_file"

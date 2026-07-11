@@ -38,7 +38,7 @@ mise_cli_task() {
 }
 
 mise_cli_bin() {
-  if ! ravn_verify_mise > /dev/null; then
+  if ! ravn_verify_mise >/dev/null; then
     # shellcheck disable=SC2034
     RAVN_DEPENDENCY_MISSING=true
     return 1
@@ -50,7 +50,7 @@ mise_cli_write_config() {
   local config_dir="$1"
 
   mkdir -p "$config_dir" || return 1
-  cat > "${config_dir}/mise.toml" << EOF
+  cat >"${config_dir}/mise.toml" <<EOF
 [tools]
 node = "${MISE_CLI_NODE_VERSION}"
 "npm:${MISE_CLI_PACKAGE}" = {
@@ -81,7 +81,7 @@ mise_cli_record_versions() {
 mise_cli_write_wrapper() {
   local mise_bin="$1"
 
-  cat > "$MISE_CLI_WRAPPER" << EOF
+  cat >"$MISE_CLI_WRAPPER" <<EOF
 #!/usr/bin/env bash
 exec "$mise_bin" exec --cd "$MISE_CLI_CONFIG_DIR" -- "$MISE_CLI_COMMAND" "\$@"
 EOF
@@ -132,7 +132,7 @@ verify() {
   [[ -x $MISE_CLI_WRAPPER && -f $MISE_CLI_CONFIG_FILE ]] || return 1
   mise_bin=$(mise_cli_bin) || return 1
   mise_cli_record_versions "$mise_bin" "$MISE_CLI_CONFIG_DIR" || return 1
-  wrapper_output=$("$MISE_CLI_WRAPPER" "${MISE_CLI_VERIFY_ARGS[@]}" 2> /dev/null) || return 1
+  wrapper_output=$("$MISE_CLI_WRAPPER" "${MISE_CLI_VERIFY_ARGS[@]}" 2>/dev/null) || return 1
   [[ -n $wrapper_output ]]
 }
 

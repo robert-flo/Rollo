@@ -4,8 +4,8 @@
 # omarchy:args=<package> [command-name] [package-version] [node-version] [bin-name]
 
 if [[ -z $1 ]]; then
-  echo "Usage: omarchy-npx-install <package> [command-name]"
-  exit 1
+	echo "Usage: omarchy-npx-install <package> [command-name]"
+	exit 1
 fi
 
 package=$1
@@ -16,7 +16,7 @@ bin_name=${5:-$command}
 
 mkdir -p "$HOME/.local/bin"
 
-cat > "$HOME/.local/bin/$command" << EOF
+cat >"$HOME/.local/bin/$command" <<EOF
 #!/bin/bash
 package="$package"
 version="$version"

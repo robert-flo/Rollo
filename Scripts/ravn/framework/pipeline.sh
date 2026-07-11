@@ -57,7 +57,7 @@ run_task() {
     run_hook before "before"
     install
     run_hook after "after"
-  ) > "$log" 2>&1 &
+  ) >"$log" 2>&1 &
 
   local pid=$!
   local status=0
@@ -65,7 +65,7 @@ run_task() {
 
   # ── Always run cleanup ──
   if hook_defined cleanup; then
-    cleanup >> "$log" 2>&1 || true
+    cleanup >>"$log" 2>&1 || true
   fi
 
   local end
@@ -96,7 +96,7 @@ run_pipeline() {
   echo ""
 
   for file in "${TASKS[@]}"; do
-    run_task "$file" || true  # Don't abort pipeline on individual failures
+    run_task "$file" || true # Don't abort pipeline on individual failures
   done
 
   local pipeline_end

@@ -102,7 +102,7 @@ fi
 unset RAVN_TEST_UPDATE_RESULT
 
 blocked_state_home="${XDG_STATE_HOME}/blocked"
-printf '%s' 'not a directory' > "$blocked_state_home"
+printf '%s' 'not a directory' >"$blocked_state_home"
 XDG_STATE_HOME="$blocked_state_home"
 if run_selected_tasks verify verified; then
   printf 'FAIL: verification passed without persisted evidence\n' >&2

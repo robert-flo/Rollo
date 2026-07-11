@@ -10,7 +10,7 @@ DEPENDS=()
 INTERACTIVE=false
 
 check() {
-  command -v agy &> /dev/null
+  command -v agy &>/dev/null
 }
 
 install() {
