@@ -18,6 +18,12 @@ TASK_FAMILY=""
 INSTALLER_STRATEGY=""
 TEST_LEVEL=""
 
+# Optional evidence context. Tasks populate resolved versions when known; the
+# framework records them without coupling the runner to a package backend.
+RAVN_EVIDENCE_REQUESTED_VERSION=""
+RAVN_EVIDENCE_RESOLVED_VERSION=""
+RAVN_EVIDENCE_RUNTIME_VERSION=""
+
 # Set to true for packages requiring user confirmation before install
 INTERACTIVE=false
 
