@@ -110,6 +110,64 @@ for ordinary `run` to update a verified installation. It manages Node through
 mise, enables required npm lifecycle scripts, verifies the real command, and
 retains the previous verified configuration where rollback is possible.
 
+## Task-specific lifecycle contract — required per task
+
+Every new or migrated active task must ship its own lifecycle integration test.
+Framework tests and Docker isolation prove the runner and backends in general;
+they do **not** prove that **this** task integrates correctly end to end.
+
+### Naming and placement
+
+For a task file `tasks/<category>/<number>-<name>.sh`, add:
+
+```text
+Scripts/ravn/tests/<number>-<name>-lifecycle.sh
+```
+
+Examples:
+
+- `tasks/10-npm-apps/13-ghui.sh` → `tests/13-ghui-lifecycle.sh`
+- `tasks/10-npm-apps/11-codex.sh` → `tests/11-codex-lifecycle.sh`
+
+One lifecycle file per task. Do not share a category-wide lifecycle test across
+`10-npm-apps`. Do not merge ghui and codex into one script.
+
+### What the lifecycle test must prove
+
+Run on the host against the real task selector (`<command>` / `CLI_COMMAND`).
+Skip with a clear `SKIP:` line only when a hard dependency is missing (for
+example mise unavailable). Never report `PASS` when the scenario did not run.
+
+At minimum, the script must assert all of the following for **that task only**:
+
+1. `run` — clean or satisfied install ends verified;
+2. idempotence — a second `run` does not unexpectedly reinstall or update;
+3. real command — wrapper executes (for example `<command> --version`);
+4. `check-updates` — completes without error on a verified install;
+5. `update` — happy path when applicable, or document `SKIP` with reason;
+6. **rollback** — a failed update does not replace the previous verified
+   version (same resolved version before and after the failed update);
+7. `reset --yes` — task-owned resources are removed;
+8. post-reset `verify` — reports absence or dependency failure as expected;
+9. reinstall after reset — `run` + `verify` succeed again.
+
+For canonical mise CLI tasks, criterion 6 may use `RAVN_TEST_UPDATE_VERIFY_FAIL=1`
+during `update` to force candidate promotion failure, then assert rollback.
+See `tests/13-ghui-lifecycle.sh` as the reference implementation.
+
+### When a task is incomplete
+
+A PR that adds or migrates a task is **not merge-ready** until:
+
+- the task module exists under `tasks/`;
+- `tests/<number>-<name>-lifecycle.sh` exists and passes (or `SKIP` with reason);
+- `bash Scripts/ravn/test-task.sh <command>` passes in Docker;
+- discovery counts are updated when the active task set changes.
+
+Existing tasks migrated before this rule (for example codex, copilot, opencode)
+remain legacy debt until each one gains its own `tests/<number>-<name>-lifecycle.sh`
+in a follow-up migration PR. New work must not add tasks without the lifecycle file.
+
 ## Mandatory testing workflow
 
 Testing is the most important part of adding a task. A task is not complete
@@ -183,10 +241,27 @@ default. They appear in the summary as `Omitidas (reference)`, not as
 A skipped reference task is not a failed active task, but it also is not
 evidence that the canonical task works.
 
-### 4. Lifecycle behavior to exercise
+### 4. Task-specific lifecycle test — required
 
-For every mise CLI task, validate as many of these operations as the backend
-supports:
+For every task you add or migrate, create and run its dedicated lifecycle
+contract (see **Task-specific lifecycle contract** above):
+
+```bash
+bash Scripts/ravn/tests/<number>-<name>-lifecycle.sh
+```
+
+Example for ghui:
+
+```bash
+bash Scripts/ravn/tests/13-ghui-lifecycle.sh
+```
+
+Copy `tests/13-ghui-lifecycle.sh` when migrating another mise CLI task; replace
+the task selector, wrapper path, and any task-specific verification arguments.
+Keep the rollback, reset, and reinstall assertions.
+
+Manual `setup.sh` invocations are still useful while developing the lifecycle
+script:
 
 ```bash
 bash Scripts/ravn/setup.sh run <command>
@@ -200,35 +275,10 @@ In non-interactive environments (agents, CI, pipes without a TTY), `reset`
 requires `--yes`. Without it, the runner exits with a clear error instead of
 waiting for confirmation or recording a misleading `reset-refused`.
 
-At minimum, prove:
-
-1. clean install in an empty state directory;
-2. real `<command> --version` (or the task's declared verification arguments)
-   from the generated wrapper;
-3. a second `run`/verification is idempotent and does not unexpectedly update;
-4. update is explicit and records the resolved package and Node versions;
-5. a failed candidate does not replace the previous verified version (for ghui,
-   prove with `tests/13-ghui-lifecycle.sh`);
-6. reset removes only resources owned by this task;
-7. verification after reset reports absence or a dependency state; and
-8. reinstall after reset succeeds.
-
-For the ghui migration (`13-ghui.sh`), also run the task-specific rollback
-contract on the host:
-
-```bash
-bash Scripts/ravn/tests/13-ghui-lifecycle.sh
-```
-
-That test applies only to ghui. It simulates a failed candidate promotion and
-asserts the previously verified `ghui` install and version remain active. Other
-`10-npm-apps` tasks do not require this file unless a matching
-`tests/<NN>-<name>-lifecycle.sh` is added for their own migration.
-
 When a scenario cannot run because the host lacks mise, network access, or a
-required platform, record it as `SKIPPED`, `UNSUPPORTED`, or `NOT_RUN` with the
-reason. Never report it as `PASS`, and never turn a missing dependency into a
-successful install.
+required platform, record it as `SKIP`, `UNSUPPORTED`, or `NOT_RUN` with the
+reason inside the lifecycle script. Never report `PASS` when the scenario did
+not execute.
 
 ### 5. Full repository gates before commit
 
@@ -238,7 +288,8 @@ find Scripts/ravn -name '*.sh' -type f -print0 | xargs -0 shellcheck
 shfmt -d Scripts/ravn
 flg_DryRun=1 bash Scripts/ravn/setup.sh
 bash Scripts/ravn/tests/dry-run.sh
-bash Scripts/ravn/test-task.sh --all
+bash Scripts/ravn/tests/<number>-<name>-lifecycle.sh
+bash Scripts/ravn/test-task.sh <command>
 git diff --check
 ```
 
@@ -277,8 +328,11 @@ Before opening a PR, confirm all of the following:
   filename prefix.
 - `CLI_PACKAGE` is the exact npm package and `CLI_COMMAND` is the real binary.
 - The task uses `ravn_mise_cli_task` unless an issue documents an exception.
+- `tests/<number>-<name>-lifecycle.sh` exists, passes, and covers rollback,
+  reset, and reinstall for this task.
 - The legacy task is preserved and unrelated tasks are untouched.
 - Static, deterministic, and isolated Docker checks pass.
+- `bash Scripts/ravn/test-task.sh <command>` passed in Docker.
 - The real command was executed from a clean environment.
 - Any skipped or unsupported matrix layer is explicitly reported.
 - The issue, commit, PR, and merge target are linked.
