@@ -191,14 +191,17 @@ for task_file in "${TASKS_TO_TEST[@]}"; do
       ;;
   esac
 
-  required_packages="curl git"
-  [[ $installer_strategy == "mise" ]] && required_packages+=" mise"
+  required_packages="curl git which"
+  if [[ $installer_strategy == "mise" || $installer_strategy == "omarchy-npx" ]]; then
+    required_packages+=" mise"
+  fi
 
   test_script=$(mktemp)
   cat > "$test_script" << EOF
 #!/usr/bin/env bash
 set -e
 export PATH="\$HOME/.local/bin:\$PATH"
+export OMARCHY_NPX_INSTALLER="/omarchy-npx-install"
 echo "=== Actualizando sistema base ==="
 pacman -Syu --noconfirm ${required_packages} 2>&1 | tail -3
 
@@ -262,6 +265,7 @@ EOF
   if docker run "${docker_args[@]}" \
        -v "$task_file:/task.sh:ro" \
        -v "$GLOBAL_FN:/global_fn.sh:ro" \
+       -v "$RAVN_DIR/omarchy-npx-install:/omarchy-npx-install:ro" \
        -v "$RAVN_DIR/framework/package.sh:/package.sh:ro" \
        -v "$RAVN_DIR/framework/hooks.sh:/hooks.sh:ro" \
        -v "$RAVN_DIR/framework/contract.sh:/contract.sh:ro" \

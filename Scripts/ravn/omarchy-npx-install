@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # omarchy:summary=Install an npx wrapper for a given npm package.
-# omarchy:args=<package> [command-name]
+# omarchy:args=<package> [command-name] [package-version] [node-version] [bin-name]
 
 if [[ -z $1 ]]; then
   echo "Usage: omarchy-npx-install <package> [command-name]"
@@ -10,17 +10,23 @@ fi
 
 package=$1
 command=${2:-$1}
+version=${3:-latest}
+node_version=${4:-latest}
+bin_name=${5:-$command}
 
 mkdir -p "$HOME/.local/bin"
 
-cat > "$HOME/.local/bin/$command" <<EOF
+cat > "$HOME/.local/bin/$command" << EOF
 #!/bin/bash
 package="$package"
+version="$version"
+node_version="$node_version"
+bin_name="$bin_name"
 command="$command"
 
-if ! node_root="\$(mise where node@latest 2>/dev/null)"; then
-  mise use -g node@latest >/dev/null
-  node_root="\$(mise where node@latest)"
+if ! node_root="\$(mise where "node@\$node_version" 2>/dev/null)"; then
+  mise use -g --pin "node@\$node_version" >/dev/null
+  node_root="\$(mise where "node@\$node_version")"
 fi
 
 node_bin="\$node_root/bin/node"
@@ -51,19 +57,12 @@ exec_package_bin() {
   fi
 }
 
-# Resolve the package bin inside npx, then run it with node@latest available for node shebangs.
-# Some wrappers are aliases, e.g. playwright-cli wraps the playwright bin.
-"\$node_bin" "\$npx_bin" --yes --prefer-online --package "\$package" -- true
-
-package_bin_path=\$("\$node_bin" "\$npx_bin" --yes --package "\$package" -- which "\$package" 2>/dev/null)
-exec_package_bin "\$package_bin_path" "\$@"
-
-# Scoped packages like @openai/codex expose an unscoped bin like codex.
-package_bin_path=\$("\$node_bin" "\$npx_bin" --yes --package "\$package" -- which "\$command" 2>/dev/null)
-exec_package_bin "\$package_bin_path" "\$@"
-
-echo "Could not resolve npm bin for \$package / \$command" >&2
-exit 127
+# Execute the declared package bin directly inside npx. This avoids relying on
+# shell $(which) behavior inside a temporary npx environment.
+package_spec="\$package@\$version"
+"\$node_bin" "\$npx_bin" --yes --prefer-online --package "\$package_spec" -- true
+PATH="\$node_root/bin:\$PATH" exec "\$node_bin" "\$npx_bin" --yes \
+  --prefer-online --package "\$package_spec" -- "\$bin_name" "\$@"
 EOF
 
 chmod +x "$HOME/.local/bin/$command"
