@@ -25,10 +25,9 @@ ravn/
 │   └── retry.sh                # Retry re-export from global_fn.sh
 │
 ├── tasks/                      # Installer modules (auto-discovered)
-│   ├── 00-core/                # Core integrations (Omarchy, RaVN) — runs first
 │   ├── 10-npm-apps/            # npm application configs + CLI tools
 │   ├── 20-shell/               # Shell environment modules (reserved)
-│   └── 30-system/              # System tweaks (firewall, SSH) — runs last
+│   └── tasks_legacy/           # Quarantined core, npm, and system tasks
 │
 ├── config/                     # Configuration files
 │   ├── ravn.conf               # Framework settings
