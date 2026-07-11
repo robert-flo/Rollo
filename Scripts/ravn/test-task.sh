@@ -13,7 +13,7 @@
 #   ./test-task.sh --all
 #   ./test-task.sh hermes
 #   ./test-task.sh 25-hermes
-#   ./test-task.sh 10-apps
+#   ./test-task.sh 10-npm-apps
 #   ./test-task.sh hermes codex grok
 #   ./test-task.sh hermes --dry-run
 #   ./test-task.sh hermes --keep
@@ -21,7 +21,7 @@
 # Supported selectors:
 #   --all                 → All discovered tasks
 #   <name>                → Matches filename or PACKAGE= value
-#   <category>            → e.g. 00-core, 10-apps, 30-system
+#   <category>            → e.g. 00-core, 10-npm-apps, 30-system
 #   <NN-name.sh>          → Specific task file
 #
 # Options:
@@ -58,7 +58,7 @@ test-task.sh — Pruebas aisladas de tareas RaVN (Docker)
 Uso:
   $(basename "$0") --all                    # Todas las tareas
   $(basename "$0") <nombre|patrón>          # Una o varias por nombre
-  $(basename "$0") 10-apps                  # Todas las de una categoría
+  $(basename "$0") 10-npm-apps              # Todas las de una categoría
   $(basename "$0") hermes codex             # Varias tareas específicas
 
 Opciones:

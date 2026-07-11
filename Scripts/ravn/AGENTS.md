@@ -12,7 +12,7 @@ Owned by the RaVN installer pipeline. Called by `install.sh` as a replacement fo
 - **Module contract**: Every task under `tasks/` must define `PACKAGE` and `install()`. Optional: `DESCRIPTION`, `CATEGORY`, `DEPENDS`, `INTERACTIVE`, `before()`, `check()`, `after()`, `cleanup()`. Defaults are provided by `framework/package.sh`.
 - **Discovery**: Modules are auto-discovered via `find tasks/ -name "*.sh" | sort`. No hardcoded arrays or registration functions.
 - **Naming**: Category directories and files both use numeric prefixes for ordering (e.g., `00-core/01-omarchy.sh`). Categories sort first, then files within each category.
-- **Dependency ordering**: `00-core/` runs before `10-apps/` by design. Modules in `10-apps/` that require `omarchy-npx-install` (codex, copilot, ghui, opencode, playwright) depend on `00-core/01-omarchy.sh` completing first.
+- **Dependency ordering**: `00-core/` runs before `10-npm-apps/` by design. Modules in `10-npm-apps/` that require `omarchy-npx-install` (codex, copilot, ghui, opencode, playwright) depend on `00-core/01-omarchy.sh` completing first.
 - **Omarchy channel**: `00-core/00-omarchy-repo.sh` pins the `[omarchy]` repository to the `edge` channel and is idempotent — it skips when the correct block is already present in `/etc/pacman.conf`. It does not replace the existing `pacman.conf` or the system mirrorlist. The repository is configured early (before `install_pkg.sh`) so that Omarchy packages can be resolved during the main install phase.
 - **Shared helpers**: `lib/omarchy.sh` contains `setup_omarchy_repo()` and `omarchy_repo_is_configured()` used by both the early repo task and the full `00-core/01-omarchy.sh` task.
 - **Lifecycle order**: `before → check → install → after → cleanup`. The `check()` function returns 0 to skip, 1 to proceed.
@@ -41,7 +41,7 @@ Owned by the RaVN installer pipeline. Called by `install.sh` as a replacement fo
 ## Subdirectories
 
 - `tasks/00-core/` — Core integrations (Omarchy, RaVN repo sync). Runs first.
-- `tasks/10-apps/` — Application configs and CLI tools (Spicetify, Dotbare, TUI CLIs via npx)
+- `tasks/10-npm-apps/` — npm application configs and CLI tools (Spicetify, Dotbare, TUI CLIs via npx)
 - `tasks/20-shell/` — Shell environment modules (reserved)
 - `tasks/30-system/` — System tweaks (firewall, SSH agent, SSH config). Runs last.
 - `config/` — Configuration files (`.conf` format)
@@ -78,7 +78,7 @@ El script `test-task.sh` permite validar cualquier tarea de forma reproducible y
 
 # Probar todas las tareas de una categoría
 ./test-task.sh 00-core
-./test-task.sh 10-apps
+./test-task.sh 10-npm-apps
 ./test-task.sh 30-system
 
 # Probar varias tareas a la vez

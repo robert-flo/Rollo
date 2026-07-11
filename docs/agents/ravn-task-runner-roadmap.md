@@ -11,6 +11,7 @@ This document records the decisions reached during the design session. Future ag
 - Parent issue #16 is complete; its acceptance criteria are covered by the merged first increment.
 - OpenCode pilot complete: #24–#27 are implemented, compared, and documented.
 - Reliability matrix complete: #28, #33, and #34 are implemented in the current branch.
+- Legacy quarantine now includes `00-core`, `10-npm-apps`, and `30-system`; active discovery is intentionally empty until the canonical replacement tasks are added.
 
 ## Agreed architecture
 
@@ -80,11 +81,12 @@ Do not migrate all existing tasks at once. Each task has its own particularities
 
 ## Next steps
 
-1. Run the manual Arch host matrix when a real host validation is required:
+1. Restore or implement the canonical baseline and system tasks before relying on the installer for a complete system setup.
+2. Run the manual Arch host matrix when a real host validation is required:
    `RAVN_RUN_MANUAL=1 bash Scripts/ravn/setup.sh matrix all`.
-2. Migrate additional npm CLI tasks individually to the approved `mise` lifecycle; do not bulk-migrate legacy tasks.
-3. For each migration, create an issue worktree from `RaVN-VM_Refactor`, implement the task contract, run contract/Docker/manual validation, merge back into the recorded base, and remove the issue branch after confirmation.
-4. Synchronize the completed development work into `dev` through the release workflow when the next release is prepared.
+3. Migrate additional npm CLI tasks individually to the approved `mise` lifecycle; do not bulk-migrate legacy tasks.
+4. For each migration, create an issue worktree from `RaVN-VM_Refactor`, implement the task contract, run contract/Docker/manual validation, merge back into the recorded base, and remove the issue branch after confirmation.
+5. Synchronize the completed development work into `dev` through the release workflow when the next release is prepared.
 
 ## Explicitly rejected directions
 

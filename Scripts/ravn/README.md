@@ -26,7 +26,7 @@ ravn/
 │
 ├── tasks/                      # Installer modules (auto-discovered)
 │   ├── 00-core/                # Core integrations (Omarchy, RaVN) — runs first
-│   ├── 10-apps/                # Application configs + CLI tools (npx, curl)
+│   ├── 10-npm-apps/            # npm application configs + CLI tools
 │   ├── 20-shell/               # Shell environment modules (reserved)
 │   └── 30-system/              # System tweaks (firewall, SSH) — runs last
 │
