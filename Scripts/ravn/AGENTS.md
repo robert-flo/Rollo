@@ -90,7 +90,6 @@ El script `test-task.sh` permite validar cualquier tarea de forma reproducible y
 # Mantener el contenedor para depuración
 ./test-task.sh hermes --keep
 ```
-
 ### Flujo recomendado al crear una nueva tarea
 
 1. Crea el archivo siguiendo la convención: `tasks/<categoría>/<NN>-<nombre>.sh`
@@ -138,5 +137,4 @@ flg_DryRun=1 bash Scripts/ravn/setup.sh
 # 4. Pruebas aisladas de tareas (recomendado)
 ./test-task.sh --all
 ```
-
 

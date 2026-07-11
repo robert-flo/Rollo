@@ -52,7 +52,7 @@ run_task() {
   local start
   start=$(date +%s)
 
-  ( 
+  (
     # Run in subshell to isolate failures
     run_hook before "before"
     install
