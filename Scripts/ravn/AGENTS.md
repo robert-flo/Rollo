@@ -12,7 +12,7 @@ Owned by the RaVN installer pipeline. Called by `install.sh` as a replacement fo
 - **Module contract**: Every task under `tasks/` must define `PACKAGE` and `install()`. Optional: `DESCRIPTION`, `CATEGORY`, `DEPENDS`, `INTERACTIVE`, `before()`, `check()`, `after()`, `cleanup()`. Defaults are provided by `framework/package.sh`.
 - **Discovery**: Modules are auto-discovered via `find tasks/ -name "*.sh" | sort`. No hardcoded arrays or registration functions.
 - **Naming**: Category directories and files both use numeric prefixes for ordering (e.g., `00-core/01-omarchy.sh`). Categories sort first, then files within each category.
-- **Active scope**: `10-npm-apps/` contains the canonical Codex and OpenCode descriptors. `00-core/` and `30-system/` are quarantined under `tasks_legacy/` until canonical replacements are implemented.
+- **Active scope**: `10-npm-apps/` contains the canonical Codex, Copilot, and OpenCode descriptors. `00-core/` and `30-system/` are quarantined under `tasks_legacy/` until canonical replacements are implemented.
 - **Omarchy channel**: `00-core/00-omarchy-repo.sh` pins the `[omarchy]` repository to the `edge` channel and is idempotent — it skips when the correct block is already present in `/etc/pacman.conf`. It does not replace the existing `pacman.conf` or the system mirrorlist. The repository is configured early (before `install_pkg.sh`) so that Omarchy packages can be resolved during the main install phase.
 - **Shared helpers**: `lib/omarchy.sh` contains `setup_omarchy_repo()` and `omarchy_repo_is_configured()` used by both the early repo task and the full `00-core/01-omarchy.sh` task.
 - **Lifecycle order**: `before → check → install → after → cleanup`. The `check()` function returns 0 to skip, 1 to proceed.
