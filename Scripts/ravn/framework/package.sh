@@ -28,6 +28,7 @@ RAVN_DEPENDENCY_MISSING=false
 
 # Set to true for packages requiring user confirmation before install
 INTERACTIVE=false
+REFERENCE_ONLY=false
 
 ravn_source_mise_cli() {
   local framework_path="${RAVN_DIR}/framework/mise-cli.sh"
@@ -54,13 +55,13 @@ ravn_mise_cli_task() {
 # after   — Post-install configuration.
 # cleanup — Cleanup temporary resources (always runs, even on failure).
 
-before()  { :; }
-check()   { return 1; }
+before() { :; }
+check() { return 1; }
 install() { :; }
-verify()  { :; }
+verify() { :; }
 check_updates() { :; }
-update()  { :; }
-after()   { :; }
+update() { :; }
+after() { :; }
 cleanup() { :; }
-reset()   { :; }
+reset() { :; }
 verify_reset() { :; }

@@ -30,16 +30,16 @@ install() {
   # 1. Configure AddKeysToAgent
   if ! grep -q "AddKeysToAgent" "$HOME/.ssh/config"; then
     # If the file is not empty, ensure newline
-    [ -s "$HOME/.ssh/config" ] && echo "" >> "$HOME/.ssh/config"
-    echo -e "Host *\n    AddKeysToAgent yes" >> "$HOME/.ssh/config"
+    [ -s "$HOME/.ssh/config" ] && echo "" >>"$HOME/.ssh/config"
+    echo -e "Host *\n    AddKeysToAgent yes" >>"$HOME/.ssh/config"
     success "AddKeysToAgent configurado en ~/.ssh/config."
   fi
 
   # 2. Configure Host ravnvm
   if ! grep -q "Host ravnvm" "$HOME/.ssh/config"; then
     # If the file is not empty, ensure newline
-    [ -s "$HOME/.ssh/config" ] && echo "" >> "$HOME/.ssh/config"
-    cat << 'EOF' >> "$HOME/.ssh/config"
+    [ -s "$HOME/.ssh/config" ] && echo "" >>"$HOME/.ssh/config"
+    cat <<'EOF' >>"$HOME/.ssh/config"
 Host ravnvm
     HostName 127.0.0.1
     Port 2222

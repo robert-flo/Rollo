@@ -21,7 +21,7 @@ dot_latency() {
   local label="$2"
   local domain="github.com"
 
-  if ! command -v kdig &> /dev/null; then
+  if ! command -v kdig &>/dev/null; then
     echo -e "    ${_YELLOW}${label}:${_RESET} kdig no disponible"
     return
   fi
@@ -61,12 +61,12 @@ check() {
   fi
 
   # 5. Check systemd service exists and is enabled
-  if ! systemctl is-enabled --quiet force-dns-override.service &> /dev/null; then
+  if ! systemctl is-enabled --quiet force-dns-override.service &>/dev/null; then
     return 1
   fi
 
   # 6. Check firewall rules (UFW or raw iptables)
-  if command -v ufw &> /dev/null && systemctl is-active --quiet ufw; then
+  if command -v ufw &>/dev/null && systemctl is-active --quiet ufw; then
     if ! sudo ufw status | grep -q "179.51.50.203"; then
       return 1
     fi
@@ -112,7 +112,7 @@ install() {
     sudo cp "$resolved_conf" "${resolved_conf}.bak"
   fi
 
-  cat << 'EOF' | sudo tee "$resolved_conf" > /dev/null
+  cat <<'EOF' | sudo tee "$resolved_conf" >/dev/null
 [Resolve]
 DNS=1.1.1.1 1.0.0.1 9.9.9.9
 FallbackDNS=8.8.8.8 8.8.4.4
@@ -140,7 +140,7 @@ EOF
   # 2. Configurar NetworkManager
   step "Configurando NetworkManager"
   sudo mkdir -p /etc/NetworkManager/conf.d
-  cat << 'EOF' | sudo tee /etc/NetworkManager/conf.d/30-dns-cloudflare.conf > /dev/null
+  cat <<'EOF' | sudo tee /etc/NetworkManager/conf.d/30-dns-cloudflare.conf >/dev/null
 [main]
 dns=default
 
@@ -153,7 +153,7 @@ EOF
 
   # Dispatcher script
   sudo mkdir -p /etc/NetworkManager/dispatcher.d
-  cat << 'EOF' | sudo tee /etc/NetworkManager/dispatcher.d/force-cloudflare-dns > /dev/null
+  cat <<'EOF' | sudo tee /etc/NetworkManager/dispatcher.d/force-cloudflare-dns >/dev/null
 #!/usr/bin/env bash
 # Runs on every network state change
 
@@ -177,20 +177,20 @@ EOF
 
   # Modificar conexiones activas en caliente
   local conn_list
-  if conn_list=$(nmcli -t -f NAME connection show --active 2> /dev/null); then
+  if conn_list=$(nmcli -t -f NAME connection show --active 2>/dev/null); then
     while read -r conn; do
       if [[ -n $conn ]]; then
         nmcli connection modify "$conn" ipv4.ignore-auto-dns yes
         nmcli connection modify "$conn" ipv4.dns "1.1.1.1 1.0.0.1 9.9.9.9"
       fi
-    done <<< "$conn_list"
+    done <<<"$conn_list"
   fi
 
   sudo systemctl restart NetworkManager
 
   # 3. Optimizaciones del Kernel (sysctl/BBR)
   step "Configurando optimizaciones de Kernel (sysctl/BBR)"
-  cat << 'EOF' | sudo tee /etc/sysctl.d/99-bbr.conf > /dev/null
+  cat <<'EOF' | sudo tee /etc/sysctl.d/99-bbr.conf >/dev/null
 # ──── TCP Buffer Sizes ───────────────────────────────────────────
 net.core.rmem_max = 16777216
 net.core.wmem_max = 16777216
@@ -218,11 +218,11 @@ net.ipv4.tcp_keepalive_probes = 5
 net.ipv4.tcp_keepalive_intvl = 15
 EOF
 
-  sudo sysctl --system &> /dev/null
+  sudo sysctl --system &>/dev/null
 
   # 4. Servicio de arranque force-dns-override
   step "Creando servicio systemd force-dns-override"
-  cat << 'EOF' | sudo tee /usr/local/bin/force-dns-override.sh > /dev/null
+  cat <<'EOF' | sudo tee /usr/local/bin/force-dns-override.sh >/dev/null
 #!/usr/bin/env bash
 # Wait for network to be ready
 sleep 3
@@ -256,7 +256,7 @@ EOF
 
   sudo chmod +x /usr/local/bin/force-dns-override.sh
 
-  cat << 'EOF' | sudo tee /etc/systemd/system/force-dns-override.service > /dev/null
+  cat <<'EOF' | sudo tee /etc/systemd/system/force-dns-override.service >/dev/null
 [Unit]
 Description=Force Cloudflare DNS on network interface
 After=network-online.target systemd-resolved.service
@@ -290,20 +290,20 @@ EOF
 
   # Aplicar en caliente para la sesión actual
   info "Aplicando reglas de bloqueo en caliente..."
-  sudo iptables -C OUTPUT -d 179.51.50.203 -p udp --dport 53 -j REJECT &> /dev/null || sudo iptables -I OUTPUT -d 179.51.50.203 -p udp --dport 53 -j REJECT
-  sudo iptables -C OUTPUT -d 179.51.50.203 -p tcp --dport 53 -j REJECT &> /dev/null || sudo iptables -I OUTPUT -d 179.51.50.203 -p tcp --dport 53 -j REJECT
-  sudo iptables -C OUTPUT -d 179.51.50.202 -p udp --dport 53 -j REJECT &> /dev/null || sudo iptables -I OUTPUT -d 179.51.50.202 -p udp --dport 53 -j REJECT
-  sudo iptables -C OUTPUT -d 179.51.50.202 -p tcp --dport 53 -j REJECT &> /dev/null || sudo iptables -I OUTPUT -d 179.51.50.202 -p tcp --dport 53 -j REJECT
-  sudo iptables -C OUTPUT -d 179.51.50.203 -j REJECT &> /dev/null || sudo iptables -I OUTPUT -d 179.51.50.203 -j REJECT
-  sudo iptables -C OUTPUT -d 179.51.50.202 -j REJECT &> /dev/null || sudo iptables -I OUTPUT -d 179.51.50.202 -j REJECT
+  sudo iptables -C OUTPUT -d 179.51.50.203 -p udp --dport 53 -j REJECT &>/dev/null || sudo iptables -I OUTPUT -d 179.51.50.203 -p udp --dport 53 -j REJECT
+  sudo iptables -C OUTPUT -d 179.51.50.203 -p tcp --dport 53 -j REJECT &>/dev/null || sudo iptables -I OUTPUT -d 179.51.50.203 -p tcp --dport 53 -j REJECT
+  sudo iptables -C OUTPUT -d 179.51.50.202 -p udp --dport 53 -j REJECT &>/dev/null || sudo iptables -I OUTPUT -d 179.51.50.202 -p udp --dport 53 -j REJECT
+  sudo iptables -C OUTPUT -d 179.51.50.202 -p tcp --dport 53 -j REJECT &>/dev/null || sudo iptables -I OUTPUT -d 179.51.50.202 -p tcp --dport 53 -j REJECT
+  sudo iptables -C OUTPUT -d 179.51.50.203 -j REJECT &>/dev/null || sudo iptables -I OUTPUT -d 179.51.50.203 -j REJECT
+  sudo iptables -C OUTPUT -d 179.51.50.202 -j REJECT &>/dev/null || sudo iptables -I OUTPUT -d 179.51.50.202 -j REJECT
 
   # Latencia final DoT
-  if command -v kdig &> /dev/null; then
+  if command -v kdig &>/dev/null; then
     info "Verificando latencias DoT activas:"
-    dot_latency "1.1.1.1"     "  cloudflare (1.1.1.1) "
-    dot_latency "1.0.0.1"     "  cloudflare (1.0.0.1) "
-    dot_latency "9.9.9.9"     "  quad9      (9.9.9.9)  "
-    dot_latency "8.8.8.8"     "  google     (8.8.8.8)  "
+    dot_latency "1.1.1.1" "  cloudflare (1.1.1.1) "
+    dot_latency "1.0.0.1" "  cloudflare (1.0.0.1) "
+    dot_latency "9.9.9.9" "  quad9      (9.9.9.9)  "
+    dot_latency "8.8.8.8" "  google     (8.8.8.8)  "
   fi
 
   success "DNS Cloudflare agresivo y optimizaciones de red aplicados exitosamente."

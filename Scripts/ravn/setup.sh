@@ -38,6 +38,15 @@ main() {
   local action="${1:-}"
 
   if [[ -z $action ]]; then
+    if ((flg_DryRun == 1)); then
+      discover_tasks
+      run_pipeline
+      return 0
+    fi
+    if [[ ! -t 0 ]]; then
+      error_msg "Sin subcomando en entorno no interactivo. Use: setup.sh run|verify|reset|update|check-updates <tarea>"
+      return 2
+    fi
     run_menu
     return
   fi

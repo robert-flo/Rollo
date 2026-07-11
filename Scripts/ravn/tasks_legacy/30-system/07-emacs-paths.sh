@@ -58,7 +58,7 @@ install() {
     if [[ ${p: -4} == ".org" ]]; then
       dir="$(dirname "$p")"
       mkdir -p "$dir"
-      : > "$p"
+      : >"$p"
       success "Archivo creado: $p"
     else
       mkdir -p "$p"

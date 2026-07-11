@@ -13,7 +13,7 @@ hook_defined() {
   local fn="$1"
 
   # Function must exist
-  if ! declare -f "$fn" &> /dev/null; then
+  if ! declare -f "$fn" &>/dev/null; then
     return 1
   fi
 

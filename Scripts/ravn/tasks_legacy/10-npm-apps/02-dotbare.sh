@@ -28,7 +28,7 @@ install() {
   fi
 
   retry 3 git clone https://github.com/kazhala/dotbare.git \
-    "$HOME/.oh-my-zsh/custom/plugins/dotbare" 2> /dev/null
+    "$HOME/.oh-my-zsh/custom/plugins/dotbare" 2>/dev/null
 
   success "Plugin dotbare instalado correctamente."
 }
