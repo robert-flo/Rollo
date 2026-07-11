@@ -386,7 +386,7 @@ run_menu() {
         run_menu_selection test || true
         ;;
       4)
-        info "Reset estará disponible después del ticket #22."
+        run_menu_selection reset || true
         ;;
       q)
         return 0

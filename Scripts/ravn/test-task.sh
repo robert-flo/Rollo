@@ -73,6 +73,26 @@ Ejemplos:
 EOF
 }
 
+get_task_test_level() {
+  local task_file="$1"
+  local test_level=""
+
+  test_level=$(
+    # shellcheck disable=SC1091,SC1090
+    source "${RAVN_DIR}/framework/package.sh"
+    # shellcheck disable=SC1090
+    source "$task_file"
+    printf '%s' "${TEST_LEVEL:-}"
+  )
+  printf '%s' "$test_level"
+}
+
+run_static_test() {
+  local task_file="$1"
+
+  bash -n "$task_file" && shellcheck "$task_file"
+}
+
 # Parse arguments
 TASKS_TO_TEST=()
 DRY_RUN=0
@@ -143,6 +163,32 @@ for task_file in "${TASKS_TO_TEST[@]}"; do
   echo "Probando: $rel_path"
 
   package=$(grep -oP 'PACKAGE="\K[^"]+' "$task_file" 2> /dev/null || echo "$task_name")
+  test_level=$(get_task_test_level "$task_file")
+
+  case "$test_level" in
+    static)
+      if run_static_test "$task_file"; then
+        echo "✓ $package → PASÓ (static)"
+        PASSED+=("$package")
+      else
+        echo "✗ $package → FALLÓ (static)"
+        FAILED+=("$package")
+      fi
+      continue
+      ;;
+    live)
+      echo "⚠ $package → NO VERIFICABLE (requiere live)"
+      UNSUPPORTED+=("$package")
+      continue
+      ;;
+    "" | isolated)
+      ;;
+    *)
+      echo "⚠ $package → NO VERIFICABLE (TEST_LEVEL inválido: $test_level)"
+      UNSUPPORTED+=("$package")
+      continue
+      ;;
+  esac
 
   test_script=$(mktemp)
   cat > "$test_script" << EOF
