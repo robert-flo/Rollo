@@ -8,6 +8,7 @@ This document records the decisions reached during the design session. Future ag
 - Spec published as GitHub issue [#16](https://github.com/robert-flo/Rollo/issues/16).
 - Implementation tickets published as [#17](https://github.com/robert-flo/Rollo/issues/17) through [#22](https://github.com/robert-flo/Rollo/issues/22), with native blocking dependencies.
 - First increment complete: #17–#22 are implemented and merged into `RaVN-VM_Refactor`.
+- Parent issue #16 is complete; its acceptance criteria are covered by the merged first increment.
 - OpenCode pilot complete: #24–#27 are implemented, compared, and documented.
 - Reliability matrix complete: #28, #33, and #34 are implemented in the current branch.
 
