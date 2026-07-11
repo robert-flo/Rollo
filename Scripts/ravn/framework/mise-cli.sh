@@ -173,8 +173,18 @@ update() {
   mkdir -p "$MISE_CLI_PREVIOUS_DIR" || return 1
   cp "$MISE_CLI_CONFIG_FILE" "${MISE_CLI_PREVIOUS_DIR}/mise.toml" || return 1
 
+  local promote_ok=false
+
   if cp "${MISE_CLI_CANDIDATE_DIR}/mise.toml" "$MISE_CLI_CONFIG_FILE" &&
-    mise_cli_write_wrapper "$mise_bin" && verify; then
+    mise_cli_write_wrapper "$mise_bin"; then
+    if [[ ${RAVN_TEST_UPDATE_VERIFY_FAIL:-0} == 1 ]]; then
+      promote_ok=false
+    elif verify; then
+      promote_ok=true
+    fi
+  fi
+
+  if [[ $promote_ok == true ]]; then
     rm -rf "$MISE_CLI_CANDIDATE_DIR"
     return 0
   fi

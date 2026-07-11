@@ -207,10 +207,23 @@ At minimum, prove:
    from the generated wrapper;
 3. a second `run`/verification is idempotent and does not unexpectedly update;
 4. update is explicit and records the resolved package and Node versions;
-5. a failed candidate does not replace the previous verified version;
+5. a failed candidate does not replace the previous verified version (for ghui,
+   prove with `tests/13-ghui-lifecycle.sh`);
 6. reset removes only resources owned by this task;
 7. verification after reset reports absence or a dependency state; and
 8. reinstall after reset succeeds.
+
+For the ghui migration (`13-ghui.sh`), also run the task-specific rollback
+contract on the host:
+
+```bash
+bash Scripts/ravn/tests/13-ghui-lifecycle.sh
+```
+
+That test applies only to ghui. It simulates a failed candidate promotion and
+asserts the previously verified `ghui` install and version remain active. Other
+`10-npm-apps` tasks do not require this file unless a matching
+`tests/<NN>-<name>-lifecycle.sh` is added for their own migration.
 
 When a scenario cannot run because the host lacks mise, network access, or a
 required platform, record it as `SKIPPED`, `UNSUPPORTED`, or `NOT_RUN` with the
