@@ -41,6 +41,11 @@ ravn_source_mise_cli() {
   fi
 }
 
+ravn_mise_cli_task() {
+  ravn_source_mise_cli
+  mise_cli_task
+}
+
 # ─── Lifecycle hooks (no-op defaults) ────────────────────────────────────────
 # before  — Pre-install preparation (create dirs, fetch keys, etc.)
 # check   — Return 0 if the package is already installed/configured (skip).
