@@ -24,7 +24,7 @@ discover_tasks() {
       sort
   )
 
-  if (( ${#TASKS[@]} == 0 )); then
+  if ((${#TASKS[@]} == 0)); then
     warn_msg "No task modules found in ${search_dir}"
     return 0
   fi
