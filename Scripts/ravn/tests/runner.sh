@@ -10,6 +10,7 @@ TASKS=(
   "${RAVN_DIR}/tests/fixtures/legacy.sh"
   "${RAVN_DIR}/tests/fixtures/baseline.sh"
   "${RAVN_DIR}/tests/fixtures/resettable.sh"
+  "${RAVN_DIR}/tests/fixtures/updateable.sh"
 )
 
 # shellcheck disable=SC1091
@@ -70,6 +71,35 @@ else
   :
 fi
 [[ ${TASK_RESULTS[0]} == "legacy:reset-unsupported" ]]
+
+if run_selected_tasks check-updates updateable; then
+  :
+else
+  exit 1
+fi
+[[ ${TASK_RESULTS[0]} == "updateable:update-available" ]]
+
+if run_selected_tasks update updateable; then
+  :
+else
+  exit 1
+fi
+[[ ${TASK_RESULTS[0]} == "updateable:verified" ]]
+
+export RAVN_TEST_UPDATE_RESULT="update-failed"
+if run_selected_tasks update updateable; then
+  printf 'FAIL: update failure was accepted\n' >&2
+  exit 1
+fi
+[[ ${TASK_RESULTS[0]} == "updateable:update-failed" ]]
+
+export RAVN_TEST_UPDATE_RESULT="rollback-failed"
+if run_selected_tasks update updateable; then
+  printf 'FAIL: rollback failure was accepted\n' >&2
+  exit 1
+fi
+[[ ${TASK_RESULTS[0]} == "updateable:rollback-failed" ]]
+unset RAVN_TEST_UPDATE_RESULT
 
 blocked_state_home="${XDG_STATE_HOME}/blocked"
 printf '%s' 'not a directory' > "$blocked_state_home"
