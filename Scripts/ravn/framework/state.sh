@@ -88,6 +88,7 @@ ravn_record_task_evidence() {
   "resolved_version": "$(_ravn_json_escape "${RAVN_EVIDENCE_RESOLVED_VERSION:-}")",
   "runtime_version": "$(_ravn_json_escape "${RAVN_EVIDENCE_RUNTIME_VERSION:-}")",
   "mise_version": "$(_ravn_json_escape "${RAVN_EVIDENCE_MISE_VERSION:-}")",
+  "upstream_sha256": "$(_ravn_json_escape "${RAVN_EVIDENCE_UPSTREAM_SHA256:-}")",
   "log_path": "$(_ravn_json_escape "$log_path")",
   "timestamp": "${timestamp}"
 }
@@ -102,6 +103,7 @@ requested_version = "$(_ravn_json_escape "${RAVN_EVIDENCE_REQUESTED_VERSION:-}")
 resolved_version = "$(_ravn_json_escape "${RAVN_EVIDENCE_RESOLVED_VERSION:-}")"
 runtime_version = "$(_ravn_json_escape "${RAVN_EVIDENCE_RUNTIME_VERSION:-}")"
 mise_version = "$(_ravn_json_escape "${RAVN_EVIDENCE_MISE_VERSION:-}")"
+upstream_sha256 = "$(_ravn_json_escape "${RAVN_EVIDENCE_UPSTREAM_SHA256:-}")"
 log_path = "$(_ravn_json_escape "$log_path")"
 last_recorded_at = "${timestamp}"
 EOF
