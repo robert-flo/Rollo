@@ -34,7 +34,7 @@ Reset is task-owned. A task may expose `reset()` and `verify_reset()` to support
 
 `setup.sh` will become the task menu's user-facing entrypoint while retaining an explicit non-interactive baseline mode for calls from `install.sh`. Direct manual execution opens the menu; automated dotfiles deployment must pass baseline mode explicitly and must never block on interactive input.
 
-The agreed implementation route and next OpenCode pilot are recorded in `docs/agents/ravn-task-runner-roadmap.md`.
+The completed implementation route and approved OpenCode reference pattern are recorded in `docs/agents/ravn-task-runner-roadmap.md`.
 
 ## Verification rule
 
