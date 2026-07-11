@@ -217,6 +217,94 @@ test_selected_tasks() {
   bash "${RAVN_DIR}/test-task.sh" "${selectors[@]}"
 }
 
+reset_selected_task() {
+  local file="$1"
+  local name=""
+  local log=""
+
+  load_task "$file"
+  name="${PACKAGE:-$(basename "$file" .sh)}"
+  log="${RAVN_DIR}/cache/logs/${name}.log"
+  _runner_log_dir
+
+  if ! task_capability reset || ! task_capability verify_reset; then
+    warn_msg "${name}: Reset no soportado; faltan reset() o verify_reset()."
+    _runner_record "$name" "reset-unsupported"
+    return 1
+  fi
+
+  if reset >> "$log" 2>&1 && verify_reset >> "$log" 2>&1; then
+    success "${name}: Reset completado y verificado."
+    _runner_record "$name" "reset"
+    return 0
+  fi
+
+  error_msg "${name}: Reset o verificación del reset falló. Log: ${log}"
+  _runner_record "$name" "reset-failed"
+  return 1
+}
+
+reset_selected_tasks() {
+  local argument selector
+  local confirm=0
+  local file name
+  local status=0
+  local -a selectors=()
+  local -a supported=()
+
+  for argument in "$@"; do
+    if [[ $argument == "--yes" ]]; then
+      confirm=1
+    else
+      selectors+=("$argument")
+    fi
+  done
+
+  TASK_RESULTS=()
+  TASK_FAILURES=()
+  resolve_task_files "${selectors[@]}" || return 1
+
+  echo ""
+  warn_msg "Esta operación eliminará la instalación y configuración de las tareas seleccionadas."
+  for file in "${RESOLVED_TASKS[@]}"; do
+    load_task "$file"
+    name="${PACKAGE:-$(basename "$file" .sh)}"
+    if task_capability reset && task_capability verify_reset; then
+      supported+=("$file")
+      printf '  reset: %s\n' "$name"
+    else
+      printf '  no soportado: %s\n' "$name"
+      _runner_record "$name" "reset-unsupported"
+      status=1
+    fi
+  done
+
+  if ((${#supported[@]} == 0)); then
+    print_task_results
+    return "$status"
+  fi
+
+  if ((confirm == 0)); then
+    read -r -p "Escribe RESET para confirmar: " selector
+    if [[ $selector != "RESET" ]]; then
+      warn_msg "Reset cancelado."
+      for file in "${supported[@]}"; do
+        name=$(task_name "$file")
+        _runner_record "$name" "reset-refused"
+      done
+      print_task_results
+      return 1
+    fi
+  fi
+
+  for file in "${supported[@]}"; do
+    reset_selected_task "$file" || status=1
+  done
+
+  print_task_results
+  return "$status"
+}
+
 print_task_results() {
   local result
 
@@ -263,6 +351,8 @@ run_menu_selection() {
   ((${#selectors[@]} > 0)) || return 0
   if [[ $action == "test" ]]; then
     test_selected_tasks "${selectors[@]}"
+  elif [[ $action == "reset" ]]; then
+    reset_selected_tasks "${selectors[@]}"
   else
     run_selected_tasks "$action" "${selectors[@]}"
   fi

@@ -6,6 +6,7 @@ TASKS=(
   "${RAVN_DIR}/tests/fixtures/verified.sh"
   "${RAVN_DIR}/tests/fixtures/legacy.sh"
   "${RAVN_DIR}/tests/fixtures/baseline.sh"
+  "${RAVN_DIR}/tests/fixtures/resettable.sh"
 )
 
 # shellcheck disable=SC1091
@@ -49,5 +50,19 @@ else
   exit 1
 fi
 [[ ${TASK_RESULTS[0]} == "baseline:verified" ]]
+
+if reset_selected_tasks resettable --yes; then
+  :
+else
+  exit 1
+fi
+[[ ${TASK_RESULTS[0]} == "resettable:reset" ]]
+
+if reset_selected_tasks legacy --yes; then
+  exit 1
+else
+  :
+fi
+[[ ${TASK_RESULTS[0]} == "legacy:reset-unsupported" ]]
 
 printf 'PASS: direct task runner\n'

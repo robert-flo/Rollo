@@ -42,7 +42,7 @@ main() {
     return
   fi
 
-  if [[ $action == "verify" || $action == "run" || $action == "test" || $action == "baseline" || $action == "--baseline" ]]; then
+  if [[ $action == "verify" || $action == "run" || $action == "test" || $action == "reset" || $action == "baseline" || $action == "--baseline" ]]; then
     if [[ $action == "baseline" || $action == "--baseline" ]]; then
       action="run"
       set -- BASELINE
@@ -50,6 +50,11 @@ main() {
       shift
       discover_tasks
       test_selected_tasks "$@"
+      return
+    elif [[ $action == "reset" ]]; then
+      shift
+      discover_tasks
+      reset_selected_tasks "$@"
       return
     else
       shift
