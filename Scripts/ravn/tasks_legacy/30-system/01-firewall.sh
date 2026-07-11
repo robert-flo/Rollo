@@ -12,7 +12,7 @@ INTERACTIVE=false
 
 check() {
   # Skip if ufw is not installed
-  if ! command -v ufw &> /dev/null; then
+  if ! command -v ufw &>/dev/null; then
     return 0
   fi
   # Skip if ufw service is not active
@@ -20,7 +20,7 @@ check() {
     return 0
   fi
   # Skip if rules already exist
-  if sudo ufw status 2> /dev/null | grep -q "53317"; then
+  if sudo ufw status 2>/dev/null | grep -q "53317"; then
     return 0
   fi
   return 1

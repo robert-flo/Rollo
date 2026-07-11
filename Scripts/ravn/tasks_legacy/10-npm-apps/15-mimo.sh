@@ -10,7 +10,7 @@ DEPENDS=()
 INTERACTIVE=false
 
 check() {
-  command -v mimo &> /dev/null
+  command -v mimo &>/dev/null
 }
 
 install() {

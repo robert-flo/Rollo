@@ -30,7 +30,7 @@ RAVN_UPDATE_AVAILABLE=false
 RAVN_UPDATE_RESULT=""
 
 opencode_mise_bin() {
-  if ! ravn_verify_mise > /dev/null; then
+  if ! ravn_verify_mise >/dev/null; then
     RAVN_DEPENDENCY_MISSING=true
     return 1
   fi
@@ -54,7 +54,7 @@ opencode_record_config_versions() {
 opencode_write_wrapper() {
   local mise_bin="$1"
 
-  cat > "$OPENCODE_WRAPPER" << EOF
+  cat >"$OPENCODE_WRAPPER" <<EOF
 #!/usr/bin/env bash
 exec "$mise_bin" exec --cd "$OPENCODE_CONFIG_DIR" -- opencode "\$@"
 EOF
@@ -66,7 +66,7 @@ opencode_write_config() {
   local config_dir="$1"
 
   mkdir -p "$config_dir" || return 1
-  cat > "${config_dir}/mise.toml" << EOF
+  cat >"${config_dir}/mise.toml" <<EOF
 [tools]
 node = "${OPENCODE_NODE_REQUEST}"
 "npm:${OPENCODE_PACKAGE}" = {

@@ -83,8 +83,8 @@ grep -q 'status = "installed"' \
 unset RAVN_TEST_CHECK_RESULT
 
 reset_input=$(mktemp)
-printf '%s\n' 'NO' > "$reset_input"
-if reset_selected_tasks opencode-contract < "$reset_input"; then
+printf '%s\n' 'NO' >"$reset_input"
+if reset_selected_tasks opencode-contract <"$reset_input"; then
   printf 'FAIL: reset refusal was accepted\n' >&2
   exit 1
 fi

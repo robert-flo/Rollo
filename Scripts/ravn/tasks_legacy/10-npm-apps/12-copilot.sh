@@ -11,7 +11,7 @@ DEPENDS=()
 INTERACTIVE=false
 
 check() {
-  command -v copilot &> /dev/null
+  command -v copilot &>/dev/null
 }
 
 install() {

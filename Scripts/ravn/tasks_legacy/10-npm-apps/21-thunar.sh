@@ -9,13 +9,13 @@ DEPENDS=()
 INTERACTIVE=false
 
 check() {
-  ! command -v thunar &> /dev/null
+  ! command -v thunar &>/dev/null
 }
 
 install() {
   local pkgs=()
   for pkg in thunar thunar-archive-plugin thunar-volman thunar-media-tags-plugin; do
-    if pacman -Qi "$pkg" &> /dev/null; then
+    if pacman -Qi "$pkg" &>/dev/null; then
       pkgs+=("$pkg")
     fi
   done

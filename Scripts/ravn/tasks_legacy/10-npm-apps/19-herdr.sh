@@ -10,11 +10,11 @@ DEPENDS=()
 INTERACTIVE=false
 
 check() {
-  command -v herdr &> /dev/null
+  command -v herdr &>/dev/null
 }
 
 install() {
-  if ! command -v curl &> /dev/null; then
+  if ! command -v curl &>/dev/null; then
     echo "Error: curl not found" >&2
     return 1
   fi
