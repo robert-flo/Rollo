@@ -26,6 +26,9 @@ Guidance for any agent (or developer) working in the RaVN dotfiles repository. S
 ### Issue tracker
 
 GitHub Issues via `gh` CLI. External PRs are not triaged. See `docs/agents/issue-tracker.md`.
+When creating or renaming an issue, prefix its title with the issue number and a
+separator: `<number> - <descriptive title>` (for example, `51 - Migrate legacy
+Codex CLI task to canonical mise lifecycle`).
 
 ### Triage labels
 
