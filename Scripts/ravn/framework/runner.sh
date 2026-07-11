@@ -197,6 +197,26 @@ run_selected_tasks() {
   return "$status"
 }
 
+test_selected_tasks() {
+  local selector
+  local -a selectors=()
+
+  if (($# == 0)); then
+    error_msg "Debe especificar una tarea o ALL."
+    return 1
+  fi
+
+  for selector in "$@"; do
+    if [[ $selector == "ALL" ]]; then
+      bash "${RAVN_DIR}/test-task.sh" --all
+      return $?
+    fi
+    selectors+=("$selector")
+  done
+
+  bash "${RAVN_DIR}/test-task.sh" "${selectors[@]}"
+}
+
 print_task_results() {
   local result
 
@@ -241,7 +261,11 @@ run_menu_selection() {
 
   mapfile -t selectors < <(read_task_selection)
   ((${#selectors[@]} > 0)) || return 0
-  run_selected_tasks "$action" "${selectors[@]}"
+  if [[ $action == "test" ]]; then
+    test_selected_tasks "${selectors[@]}"
+  else
+    run_selected_tasks "$action" "${selectors[@]}"
+  fi
 }
 
 run_menu() {
@@ -269,7 +293,7 @@ run_menu() {
         run_menu_selection run || true
         ;;
       3)
-        info "Integration test estará disponible después del ticket #21."
+        run_menu_selection test || true
         ;;
       4)
         info "Reset estará disponible después del ticket #22."

@@ -84,6 +84,10 @@ while [[ $# -gt 0 ]]; do
       mapfile -t TASKS_TO_TEST < <(find "$TASKS_DIR" -name "*.sh" | sort)
       shift
       ;;
+    ALL | all)
+      mapfile -t TASKS_TO_TEST < <(find "$TASKS_DIR" -name "*.sh" | sort)
+      shift
+      ;;
     --dry-run)
       DRY_RUN=1
       shift
@@ -127,6 +131,7 @@ echo ""
 
 FAILED=()
 PASSED=()
+UNSUPPORTED=()
 
 for task_file in "${TASKS_TO_TEST[@]}"; do
   [[ ! -f "$task_file" ]] && continue
@@ -151,9 +156,12 @@ echo "=== Ejecutando tarea: $package ==="
 
 # Source global_fn.sh first (provides step, warn_msg, info, success, etc.)
 if [[ -f "/global_fn.sh" ]]; then
-  source "/global_fn.sh" 2>/dev/null || true
+source "/global_fn.sh" 2>/dev/null || true
 fi
 
+source "/package.sh" 2>/dev/null || true
+source "/hooks.sh" 2>/dev/null || true
+source "/contract.sh" 2>/dev/null || true
 source "/task.sh" 2>/dev/null || true
 
 if declare -f install >/dev/null; then
@@ -175,17 +183,20 @@ else
 fi
 
 echo "=== Verificando resultado ==="
-if declare -f check >/dev/null; then
-  if check; then
-    echo "✓ check() pasó correctamente"
+if declare -f verify >/dev/null && task_capability verify; then
+  if verify; then
+    echo "✓ verify() pasó correctamente"
     exit 0
   else
-    echo "✗ check() falló después de la instalación"
+    echo "✗ verify() falló después de la instalación"
     exit 1
   fi
+elif declare -f check >/dev/null; then
+  echo "⚠ verify() no está implementado; resultado no verificable"
+  exit 42
 else
-  echo "✓ Tarea sin check() — se considera exitosa"
-  exit 0
+  echo "⚠ Tarea sin verify() — resultado no verificable"
+  exit 42
 fi
 EOF
 
@@ -201,13 +212,22 @@ EOF
   if docker run "${docker_args[@]}" \
        -v "$task_file:/task.sh:ro" \
        -v "$GLOBAL_FN:/global_fn.sh:ro" \
+       -v "$RAVN_DIR/framework/package.sh:/package.sh:ro" \
+       -v "$RAVN_DIR/framework/hooks.sh:/hooks.sh:ro" \
+       -v "$RAVN_DIR/framework/contract.sh:/contract.sh:ro" \
        -v "$test_script:/test.sh:ro" \
        "$DOCKER_IMAGE" bash /test.sh; then
     echo "✓ $package → PASÓ"
     PASSED+=("$package")
   else
-    echo "✗ $package → FALLÓ"
-    FAILED+=("$package")
+    rc=$?
+    if ((rc == 42)); then
+      echo "⚠ $package → NO VERIFICABLE"
+      UNSUPPORTED+=("$package")
+    else
+      echo "✗ $package → FALLÓ"
+      FAILED+=("$package")
+    fi
   fi
 
   rm -f "$test_script"
@@ -218,6 +238,7 @@ echo "════════════════════════�
 echo "Resumen de pruebas"
 echo "  ✓ Pasaron:  ${#PASSED[@]}"
 echo "  ✗ Fallaron: ${#FAILED[@]}"
+echo "  ⚠ No verificables: ${#UNSUPPORTED[@]}"
 if [[ ${#FAILED[@]} -gt 0 ]]; then
   echo "  Fallidos: ${FAILED[*]}"
   exit 1
