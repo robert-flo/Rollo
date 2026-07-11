@@ -45,7 +45,7 @@ Single-context. See `docs/agents/domain.md`.
   - `migrations/` - Version-specific migration scripts (e.g., `v26.4.3.sh`) run automatically by the installer.
   - `extra/` - Optional, standalone scripts not invoked by `install.sh` — launched manually as needed (e.g., external drive mounting, Flatpak installation, additional modules, app/symlink restoration).
   - `launchers/` - Subsystem for installing and managing app launchers (Omarchy-style web apps and TUIs), including install binaries (`omarchy-*`, `ravn-browser-webapp-install`) and supporting libs.
-  - `ravn/` - The actual RaVN engine: a modular installation framework with its own `AGENTS.md`, `framework/` (core logic: discovery, hooks, packaging, pipeline, retry, state), and `tasks/` organized by domain (`00-core`, `10-apps`, `20-shell`, `30-system`). The root-level `install.sh` is a separate, higher-level orchestration entry point. Includes `test-task.sh` for Docker-based local CI.
+  - `ravn/` - The actual RaVN engine: a modular installation framework with its own `AGENTS.md`, `framework/` (core logic: discovery, hooks, packaging, pipeline, retry, state), and `tasks/` organized by domain (`00-core`, `10-npm-apps`, `20-shell`, `30-system`). The root-level `install.sh` is a separate, higher-level orchestration entry point. Includes `test-task.sh` for Docker-based local CI.
   - `ravnvm/` - Script for running RaVN inside a virtual machine, for testing and development purposes.
 - `Configs/.local/bin/` - Personal CLI utility scripts, copied to `$HOME/.local/bin` by the dotfiles installer. Includes git workflow tools (`git-create-worktree`, `git-bare-clone`, `git-issue-worktree`, `git-setup`), the dotfiles reconciliation TUI `ravn-dot`, Emacs helpers, Hyprland/hyde utilities (`hyde-shell`, `hydectl`, `hyde-ipc`, `monitor-toggle.sh`, `toggle-gaps.sh`, etc.), and media tools (`descargar-video`, `play-yt`, `record.sh`).
 - `Source/arcs/` - Compressed tar archives (`.tar.gz`, `.vsix`) containing fonts, cursors, SDDM themes, GTK assets, and Firefox/Code configuration baselines.
@@ -189,7 +189,8 @@ To protect the user's active system configurations from accidental resets or unc
 
 Refer to [RELEASE_POLICY.md](RELEASE_POLICY.md) for details. **The following rules are non-negotiable and must be strictly followed by all agents and developers:**
 
-- **`dev`**: The active branch for all features and PRs. **Under no circumstances should `dev` receive direct commits.** It must always be fed exclusively by auxiliary topic/feature branches created in isolated worktrees (via `git-create-worktree`, in `Configs/.local/bin/` — see "Repository Structure & Purpose") and merged in.
+- **`dev`**: The integration branch for the release workflow. **Under no circumstances should `dev` receive direct commits.** It must always be fed exclusively by auxiliary branches merged through PRs.
+- **`RaVN-VM_Refactor`**: The current active development/base branch for the issue workflow described in this document. `/implement` creates issue worktrees from this branch unless the user explicitly names another base; completed issue PRs merge back into the recorded base branch first. Synchronization into `dev` happens separately when the release workflow calls for it.
 - **`rc`** (Release Candidate): Receives a merge from `dev` on the second-to-last Friday of the month. Frozen for regression testing and bug fixes only. **`rc` only receives merges from `dev`.**
 - **`master`**: Receives a merge from `rc` on the last Friday of the month for the official monthly version release, tagged as `YY.M.patch` (e.g., `26.4.3`) — consistent with the versioning scheme already used by migration scripts in `Scripts/migrations/`.
 
@@ -295,14 +296,14 @@ This is the official main flow of the Matt Pocock skills (per `ask-matt`'s routi
               │                                        │                    (fresh context each,
               │                                        │                     via /handoff if needed)
               └────────────────────┬───────────────────┴───────────────────────────────┘
-                                    ▼
-                              /code-review
+                              ▼
+                       /code-review
                           (Standards + Spec)
                                     │
                                     ▼
-                       Commit → push → PR into `dev`
+                  Commit → push → PR into recorded base
                     (never direct commits — see
-                     "Branching & Release Policy")
+                     "Task Execution Workflow")
 ```
 
 ### On-ramps
@@ -330,7 +331,10 @@ This is the official main flow of the Matt Pocock skills (per `ask-matt`'s routi
 
 ### Phase 1 — Environment & Task Setup
 
-1. **Create an isolated worktree** for the task via `git-create-worktree` (see "Git Worktree Workflow"). No direct commits to `dev`.
+1. **Create an isolated issue worktree** whenever the user activates `/implement` for a GitHub issue. Use `/home/ravn/.local/bin/git-issue-worktree` with the issue number, a descriptive slug, the active repository path, and the current base branch. The worktree must be created from the branch being developed at that moment (currently `RaVN-VM_Refactor`), not automatically from `main` or `dev`.
+   - Example: `/home/ravn/.local/bin/git-issue-worktree -r /home/ravn/Work/Rollo/RaVN-VM_Refactor -B RaVN-VM_Refactor <issue> <slug>`.
+   - Record the base branch before implementation begins; that exact branch is the merge target later.
+   - Do not implement or commit the issue directly in the base worktree.
 2. **Determine the best implementation approach** for the requested task. When feasible, prefer creating a task module under `Scripts/ravn/tasks/<category>/<NN>-<name>.sh` following the module contract (see [Scripts/ravn/AGENTS.md](Scripts/ravn/AGENTS.md) § Adding a task module); otherwise choose the most appropriate mechanism (script, config edit, migration, etc.).
 3. **Register new packages**, only if the task requires system packages:
    - [Scripts/pkg_core.lst](Scripts/pkg_core.lst) — base packages installed for every user.
@@ -352,7 +356,10 @@ This is the official main flow of the Matt Pocock skills (per `ask-matt`'s routi
    - Iterate until the change is 100% confirmed working and meets the user's requirements.
    - Copy the validated final state from `$HOME` back into `Configs/` (see "User Preferences" § Live Synchronization, `$HOME` → repo direction), so that `$HOME` and the repo are in sync before pushing. `ravn-dot` may optionally be pointed to by the agent as a suggestion for the user to manually audit the sync afterward, but the agent itself should not depend on it (it's interactive-only).
 
-### Phase 4 — Deployment
+### Phase 4 — Merge, Cleanup & Handoff
 
 9. **Run `/code-review`** against the fixed point where the worktree branched off, using the standard review framing (see "Task Planning & Skills Workflow" § The Main Build Chain) — Standards + Spec review. Resolve any Blocker/Major findings before proceeding.
-10. **Commit, push, and merge into `dev`** via PR (see "Branching & Release Policy"). `dev` must never receive direct commits.
+10. **Commit and push the issue branch**, then create and merge a PR into the exact base branch recorded in Phase 1. The merge target is the branch from which the issue worktree was created; do not substitute `dev` or `main` unless that was the recorded base.
+11. **Synchronize the base worktree** after the PR merges, then verify the merged result and its clean status.
+12. **Clean up only after the merge is confirmed**: remove the issue worktree, delete its local branch, and delete its remote branch. Never delete `dev`, `master`, the active base branch, or a branch that was not merged.
+13. **Give the user the manual validation instructions before proposing the next issue.** Explain the exact commands or UI steps needed to test the completed change in the live environment, when manual validation applies. Then report that the base branch is ready for the next issue. Do not silently start the next issue in the same handoff.
