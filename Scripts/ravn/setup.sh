@@ -37,6 +37,11 @@ done
 main() {
   local action="${1:-}"
 
+  if [[ -z $action ]]; then
+    run_menu
+    return
+  fi
+
   if [[ $action == "verify" || $action == "run" || $action == "baseline" || $action == "--baseline" ]]; then
     if [[ $action == "baseline" || $action == "--baseline" ]]; then
       action="run"

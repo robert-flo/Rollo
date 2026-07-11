@@ -206,3 +206,80 @@ print_task_results() {
     printf '  %s\n' "$result"
   done
 }
+
+print_task_catalog() {
+  local file name family
+
+  echo ""
+  step "Tareas disponibles"
+  for file in "${TASKS[@]}"; do
+    name=$(task_name "$file")
+    family=$(task_family "$file")
+    [[ -z $family ]] && family="legacy"
+    printf '  %-24s [%s]\n' "$name" "$family"
+  done
+}
+
+read_task_selection() {
+  local selection selector
+  local -a selectors=()
+
+  read -r -p "Tareas (ALL o separadas por coma, q para cancelar): " selection
+  [[ ${selection,,} == "q" ]] && return 1
+  [[ -z $selection ]] && return 1
+
+  IFS=',' read -ra selectors <<< "$selection"
+  for selector in "${selectors[@]}"; do
+    selector="${selector// /}"
+    [[ -n $selector ]] && printf '%s\n' "$selector"
+  done
+}
+
+run_menu_selection() {
+  local action="$1"
+  local -a selectors=()
+
+  mapfile -t selectors < <(read_task_selection)
+  ((${#selectors[@]} > 0)) || return 0
+  run_selected_tasks "$action" "${selectors[@]}"
+}
+
+run_menu() {
+  local choice
+
+  discover_tasks
+
+  while true; do
+    echo ""
+    step "RaVN Task Runner"
+    print_task_catalog
+    echo ""
+    printf '  1  Verify current configuration\n'
+    printf '  2  Run full setup\n'
+    printf '  3  Run integration test\n'
+    printf '  4  Reset selected tasks\n'
+    printf '  q  Exit\n'
+    read -r -p "Selecciona una opción: " choice
+
+    case "${choice,,}" in
+      1)
+        run_selected_tasks verify ALL || true
+        ;;
+      2)
+        run_menu_selection run || true
+        ;;
+      3)
+        info "Integration test estará disponible después del ticket #21."
+        ;;
+      4)
+        info "Reset estará disponible después del ticket #22."
+        ;;
+      q)
+        return 0
+        ;;
+      *)
+        warn_msg "Opción no válida: ${choice}"
+        ;;
+    esac
+  done
+}
