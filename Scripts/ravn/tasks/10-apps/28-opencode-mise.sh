@@ -54,6 +54,7 @@ opencode_write_wrapper() {
 #!/usr/bin/env bash
 exec "$mise_bin" exec --cd "$OPENCODE_CONFIG_DIR" -- opencode "\$@"
 EOF
+  [[ -s $OPENCODE_WRAPPER ]] || return 1
   chmod +x "$OPENCODE_WRAPPER"
 }
 
@@ -65,9 +66,9 @@ opencode_install_config() {
   local package_version=""
   local postinstall=""
 
-  mkdir -p "$config_dir"
+  mkdir -p "$config_dir" || return 1
   "$mise_bin" use --path "$config_file" --pin --yes \
-    "node@${OPENCODE_NODE_REQUEST}" "npm:${OPENCODE_PACKAGE}@${OPENCODE_VERSION_REQUEST}"
+    "node@${OPENCODE_NODE_REQUEST}" "npm:${OPENCODE_PACKAGE}@${OPENCODE_VERSION_REQUEST}" || return 1
 
   install_root=$("$mise_bin" where "npm:${OPENCODE_PACKAGE}@${OPENCODE_VERSION_REQUEST}")
   package_version=$("$mise_bin" exec --cd "$config_dir" -- node -p \
@@ -75,7 +76,7 @@ opencode_install_config() {
   [[ -n $package_version ]] || return 1
   postinstall="${install_root}/lib/node_modules/${OPENCODE_PACKAGE}/postinstall.mjs"
   if [[ -f $postinstall ]]; then
-    "$mise_bin" exec --cd "$config_dir" -- node "$postinstall"
+    "$mise_bin" exec --cd "$config_dir" -- node "$postinstall" || return 1
   fi
 
   opencode_record_config_versions "$mise_bin" "$config_dir"
@@ -93,10 +94,10 @@ install() {
     return 1
   }
 
-  mkdir -p "${HOME}/.local/bin"
-  opencode_install_config "$mise_bin" "$OPENCODE_CONFIG_DIR"
-  opencode_write_wrapper "$mise_bin"
-  opencode_record_config_versions "$mise_bin" "$OPENCODE_CONFIG_DIR"
+  mkdir -p "${HOME}/.local/bin" || return 1
+  opencode_install_config "$mise_bin" "$OPENCODE_CONFIG_DIR" || return 1
+  opencode_write_wrapper "$mise_bin" || return 1
+  opencode_record_config_versions "$mise_bin" "$OPENCODE_CONFIG_DIR" || return 1
 }
 
 verify() {
@@ -144,8 +145,14 @@ update() {
   fi
 
   rm -rf "$OPENCODE_PREVIOUS_DIR"
-  mkdir -p "$OPENCODE_PREVIOUS_DIR"
-  cp "$OPENCODE_CONFIG_FILE" "${OPENCODE_PREVIOUS_DIR}/mise.toml"
+  mkdir -p "$OPENCODE_PREVIOUS_DIR" || {
+    RAVN_UPDATE_RESULT="update-failed"
+    return 1
+  }
+  cp "$OPENCODE_CONFIG_FILE" "${OPENCODE_PREVIOUS_DIR}/mise.toml" || {
+    RAVN_UPDATE_RESULT="update-failed"
+    return 1
+  }
 
   if cp "${OPENCODE_CANDIDATE_DIR}/mise.toml" "$OPENCODE_CONFIG_FILE" &&
     opencode_write_wrapper "$mise_bin" && verify; then
