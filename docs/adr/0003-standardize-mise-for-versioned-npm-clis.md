@@ -20,5 +20,6 @@ mise gives the task ownership of the Node runtime, npm package version, configur
 
 - New npm CLI tasks should prefer `mise` and implement a real `verify()`.
 - Required npm lifecycle scripts must be handled explicitly and verified.
+- OpenCode enables `allow_builds = true` for its npm tool entry and retains explicit postinstall verification for older mise/npm combinations.
 - `latest` must be an intentional policy, not an accidental default.
 - Nix may be added later as an optional backend for tasks where its reproducibility justifies its operational cost.
