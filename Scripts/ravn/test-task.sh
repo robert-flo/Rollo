@@ -73,18 +73,18 @@ Ejemplos:
 EOF
 }
 
-get_task_test_level() {
+get_task_metadata() {
   local task_file="$1"
-  local test_level=""
+  local metadata=""
 
-  test_level=$(
+  metadata=$(
     # shellcheck disable=SC1091,SC1090
     source "${RAVN_DIR}/framework/package.sh"
     # shellcheck disable=SC1090
     source "$task_file"
-    printf '%s' "${TEST_LEVEL:-}"
+    printf '%s|%s|%s' "${PACKAGE:-}" "${TEST_LEVEL:-}" "${INSTALLER_STRATEGY:-}"
   )
-  printf '%s' "$test_level"
+  printf '%s' "$metadata"
 }
 
 run_static_test() {
@@ -162,8 +162,9 @@ for task_file in "${TASKS_TO_TEST[@]}"; do
   echo "────────────────────────────────────────────────────────"
   echo "Probando: $rel_path"
 
-  package=$(grep -oP 'PACKAGE="\K[^"]+' "$task_file" 2> /dev/null || echo "$task_name")
-  test_level=$(get_task_test_level "$task_file")
+  metadata=$(get_task_metadata "$task_file")
+  IFS='|' read -r package test_level installer_strategy <<< "$metadata"
+  [[ -z $package ]] && package="$task_name"
 
   case "$test_level" in
     static)
@@ -190,13 +191,16 @@ for task_file in "${TASKS_TO_TEST[@]}"; do
       ;;
   esac
 
+  required_packages="curl git"
+  [[ $installer_strategy == "mise" ]] && required_packages+=" mise"
+
   test_script=$(mktemp)
   cat > "$test_script" << EOF
 #!/usr/bin/env bash
 set -e
 export PATH="\$HOME/.local/bin:\$PATH"
 echo "=== Actualizando sistema base ==="
-pacman -Syu --noconfirm curl git 2>&1 | tail -3
+pacman -Syu --noconfirm ${required_packages} 2>&1 | tail -3
 
 echo "=== Ejecutando tarea: $package ==="
 
