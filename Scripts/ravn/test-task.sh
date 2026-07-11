@@ -64,6 +64,7 @@ Uso:
 Opciones:
   --dry-run     Ejecuta install() en modo simulación
   --keep        Mantiene el contenedor después de la prueba (debug)
+  --mise-version <ver>  Fija el fixture de mise para Docker/VM
   -h, --help    Muestra esta ayuda
 
 Ejemplos:
@@ -97,6 +98,7 @@ run_static_test() {
 TASKS_TO_TEST=()
 DRY_RUN=0
 KEEP_CONTAINER=0
+MISE_FIXTURE_VERSION="${RAVN_MISE_FIXTURE_VERSION:-2026.6.11}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -115,6 +117,14 @@ while [[ $# -gt 0 ]]; do
     --keep)
       KEEP_CONTAINER=1
       shift
+      ;;
+    --mise-version)
+      if (($# < 2)); then
+        echo "Error: --mise-version requiere una versión." >&2
+        exit 2
+      fi
+      MISE_FIXTURE_VERSION="$2"
+      shift 2
       ;;
     -h | --help)
       print_usage
@@ -192,9 +202,6 @@ for task_file in "${TASKS_TO_TEST[@]}"; do
   esac
 
   required_packages="curl git which"
-  if [[ $installer_strategy == "mise" || $installer_strategy == "omarchy-npx" ]]; then
-    required_packages+=" mise"
-  fi
 
   test_script=$(mktemp)
   cat > "$test_script" << EOF
@@ -215,6 +222,19 @@ fi
 source "/package.sh" 2>/dev/null || true
 source "/hooks.sh" 2>/dev/null || true
 source "/contract.sh" 2>/dev/null || true
+source "/mise.sh" 2>/dev/null || true
+
+if [[ "$installer_strategy" == "mise" || "$installer_strategy" == "omarchy-npx" ]]; then
+  export RAVN_ALLOW_MISE_BOOTSTRAP=1
+  export RAVN_MISE_FIXTURE_VERSION="$MISE_FIXTURE_VERSION"
+  export RAVN_MISE_BOOTSTRAP_DIR="/tmp/ravn-mise"
+  ravn_bootstrap_mise > /dev/null
+  RAVN_MISE_BIN="\$(ravn_mise_binary)"
+  export RAVN_MISE_BIN
+  export PATH="\$(dirname "\$RAVN_MISE_BIN"):\$PATH"
+  ravn_verify_mise > /dev/null
+  printf 'mise fixture: %s\n' "\$RAVN_EVIDENCE_MISE_VERSION"
+fi
 source "/task.sh" 2>/dev/null || true
 
 if declare -f install >/dev/null; then
@@ -269,6 +289,7 @@ EOF
        -v "$RAVN_DIR/framework/package.sh:/package.sh:ro" \
        -v "$RAVN_DIR/framework/hooks.sh:/hooks.sh:ro" \
        -v "$RAVN_DIR/framework/contract.sh:/contract.sh:ro" \
+       -v "$RAVN_DIR/framework/mise.sh:/mise.sh:ro" \
        -v "$test_script:/test.sh:ro" \
        "$DOCKER_IMAGE" bash /test.sh; then
     echo "✓ $package → PASÓ"
