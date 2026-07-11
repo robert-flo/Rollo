@@ -3,6 +3,8 @@
 # Orchestrates task execution with lifecycle management, logging, counters,
 # spinners, and interactive prompts. Contains no installer logic.
 
+flg_DryRun=${flg_DryRun:-0}
+
 # run_task <file>
 #   Sources a task module and runs its full lifecycle:
 #   package.sh defaults → source task → check → before → install → after → cleanup
