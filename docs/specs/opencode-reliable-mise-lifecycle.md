@@ -1,3 +1,7 @@
+## Status
+
+Implemented and approved as the reference lifecycle through the OpenCode pilot and integration matrix. Future CLI migrations must adopt this pattern one task at a time.
+
 ## Problem Statement
 
 The current RaVN task suite can report that a task completed even when the installed tool is not usable. The primary causes are weak postconditions, ambiguous partial state, implicit runtime assumptions, and insufficient evidence about what was installed. This is especially concerning for npm CLIs, where lifecycle scripts may be required and where `latest` changes over time.
@@ -103,4 +107,4 @@ The task runner must distinguish absent, partial, installed, verified, stale, br
 
 ## Further Notes
 
-OpenCode is not considered complete because one installation passed. It is complete only when the failure-closed lifecycle, evidence, rollback, and contract/integration/manual test matrix produce repeatable evidence. Only then should the contract be standardized and applied to the next task one at a time.
+OpenCode is complete only when the failure-closed lifecycle, evidence, rollback, and contract/integration/manual test matrix produce repeatable evidence. That gate has now been met; the contract can be applied to the next task one at a time.

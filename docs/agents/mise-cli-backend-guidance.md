@@ -1,6 +1,6 @@
 # Guidance: Using mise for CLI Tasks
 
-These conclusions came from the OpenCode `mise` pilot and should guide future RaVN task design. They are guidance, not a final decision that `mise` must be used for every CLI tool; the comparison with a hardened `omarchy-npx-install` backend is still pending.
+These conclusions came from the completed OpenCode `mise` pilot and should guide future RaVN task design. `mise` is the approved default for versioned npm CLIs; `omarchy-npx-install` remains an explicit fallback for legacy or justified exceptions.
 
 ## Recommended role
 

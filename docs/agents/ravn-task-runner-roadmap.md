@@ -63,7 +63,7 @@ After all six tickets are implemented:
 4. Commit atomically on a topic branch, push it, and open a PR into the recorded development base branch.
 5. Do not begin broad task migration before this PR is reviewed and merged.
 
-## Next increment: OpenCode pilot
+## Completed increment: OpenCode pilot
 
 The OpenCode pilot was completed through tickets #24–#27. The comparison is documented in `docs/agents/opencode-backend-comparison.md` and ADR 0003.
 
@@ -77,6 +77,14 @@ The comparison must cover clean installation, idempotent rerun, real command exe
 The current integration matrix is exposed through `setup.sh matrix` with contract, Docker integration, explicit Arch host validation, and fail-closed `all` modes. Results are written separately to the matrix report. The current `opencode-mise` task owns a `mise.toml` entry with `allow_builds = true`; it also retains explicit postinstall verification for older mise/npm combinations.
 
 Do not migrate all existing tasks at once. Each task has its own particularities and must be addressed individually using the pilot contract. Nix remains a separate future backend experiment, not a current default.
+
+## Next steps
+
+1. Run the manual Arch host matrix when a real host validation is required:
+   `RAVN_RUN_MANUAL=1 bash Scripts/ravn/setup.sh matrix all`.
+2. Migrate additional npm CLI tasks individually to the approved `mise` lifecycle; do not bulk-migrate legacy tasks.
+3. For each migration, create an issue worktree from `RaVN-VM_Refactor`, implement the task contract, run contract/Docker/manual validation, merge back into the recorded base, and remove the issue branch after confirmation.
+4. Synchronize the completed development work into `dev` through the release workflow when the next release is prepared.
 
 ## Explicitly rejected directions
 
