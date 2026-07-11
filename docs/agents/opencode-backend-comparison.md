@@ -1,7 +1,7 @@
 # OpenCode backend comparison
 
 Ticket: #27  
-Date: 2026-07-10
+Date: 2026-07-11
 
 ## Scope
 
@@ -37,7 +37,7 @@ Both tasks passed the contract checks and touched-script checks: `bash -n`, `she
 | Package resolution failure | FAIL | FAIL | Invalid package/version is surfaced by the underlying manager. |
 | Version mismatch | FAIL at `verify()` | FAIL at command execution/`verify()` | The postcondition checks actual command output, not merely wrapper existence. |
 | Wrapper deleted | FAIL at `verify()` | FAIL at `verify()` | Ownership is observable. |
-| Reset refusal | Not forced in automated run | Not forced in automated run | Requires a destructive-operation fault injection seam; current reset paths are explicit and report failure. |
+| Reset refusal | PASS in contract matrix | PASS in contract matrix | Controlled failure injection proves the runner refuses destructive reset without confirmation. |
 | Shell initialization absent | PASS | PASS | Verification invokes the wrappers directly in the runner environment; no `.bashrc`, `.zshrc` or `mise activate` is required. |
 
 The npx helper previously performed an unnecessary warm-up command that emitted a `which` usage diagnostic in the Arch container. The warm-up was removed; the remaining diagnostic can still be emitted by npm/npx dependency resolution, but the declared OpenCode command executes and verifies successfully. This is a transparency weakness of the npx backend, not a verification pass condition.
@@ -58,6 +58,6 @@ Keep `omarchy-npx-install` as a supported fallback for packages whose distributi
 
 ## Follow-up risks
 
-- mise currently skips npm lifecycle scripts by default. Tasks must explicitly handle required postinstall steps and verify actual execution.
+- The task requests `allow_builds = true` in its mise tool configuration. Older mise/npm combinations may still require the explicit postinstall fallback; verification remains authoritative.
 - The pilots use a fixed version (`1.17.18`) for reproducible tests. A future update policy must distinguish pinned installs from an explicit `latest` policy.
 - The failure matrix currently exercises real failures available through missing state and bad resolution, but does not yet inject network failures or reset refusals deterministically. Those belong in a backend-test harness before generalizing the framework.
