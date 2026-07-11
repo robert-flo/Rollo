@@ -14,6 +14,7 @@ INSTALLER_STRATEGY="mise"
 TEST_LEVEL="isolated"
 DEPENDS=("mise" "node")
 INTERACTIVE=false
+REFERENCE_ONLY=true
 
 OPENCODE_PACKAGE="opencode-ai"
 OPENCODE_VERSION_REQUEST="latest"

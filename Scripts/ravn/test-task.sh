@@ -83,7 +83,7 @@ get_task_metadata() {
     source "${RAVN_DIR}/framework/package.sh"
     # shellcheck disable=SC1090
     source "$task_file"
-    printf '%s|%s|%s' "${PACKAGE:-}" "${TEST_LEVEL:-}" "${INSTALLER_STRATEGY:-}"
+    printf '%s|%s|%s|%s' "${PACKAGE:-}" "${TEST_LEVEL:-}" "${INSTALLER_STRATEGY:-}" "${REFERENCE_ONLY:-false}"
   )
   printf '%s' "$metadata"
 }
@@ -98,6 +98,7 @@ run_static_test() {
 TASKS_TO_TEST=()
 DRY_RUN=0
 KEEP_CONTAINER=0
+INCLUDE_REFERENCES=0
 MISE_FIXTURE_VERSION="${RAVN_MISE_FIXTURE_VERSION:-2026.6.11}"
 
 while [[ $# -gt 0 ]]; do
@@ -116,6 +117,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --keep)
       KEEP_CONTAINER=1
+      shift
+      ;;
+    --include-reference)
+      INCLUDE_REFERENCES=1
       shift
       ;;
     --mise-version)
@@ -173,8 +178,14 @@ for task_file in "${TASKS_TO_TEST[@]}"; do
   echo "Probando: $rel_path"
 
   metadata=$(get_task_metadata "$task_file")
-  IFS='|' read -r package test_level installer_strategy <<< "$metadata"
+  IFS='|' read -r package test_level installer_strategy reference_only <<< "$metadata"
   [[ -z $package ]] && package="$task_name"
+
+  if [[ ${reference_only:-false} == true && $INCLUDE_REFERENCES == 0 ]]; then
+    echo "⚠ $package → OMITIDA (reference-only; use --include-reference)"
+    UNSUPPORTED+=("$package")
+    continue
+  fi
 
   case "$test_level" in
     static)
