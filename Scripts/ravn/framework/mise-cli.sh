@@ -127,10 +127,13 @@ install() {
 
 verify() {
   local mise_bin=""
+  local wrapper_output=""
 
   [[ -x $MISE_CLI_WRAPPER && -f $MISE_CLI_CONFIG_FILE ]] || return 1
   mise_bin=$(mise_cli_bin) || return 1
-  mise_cli_record_versions "$mise_bin" "$MISE_CLI_CONFIG_DIR"
+  mise_cli_record_versions "$mise_bin" "$MISE_CLI_CONFIG_DIR" || return 1
+  wrapper_output=$("$MISE_CLI_WRAPPER" "${MISE_CLI_VERIFY_ARGS[@]}" 2> /dev/null) || return 1
+  [[ -n $wrapper_output ]]
 }
 
 check_updates() {

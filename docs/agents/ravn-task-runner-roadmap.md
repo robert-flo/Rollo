@@ -11,7 +11,7 @@ This document records the decisions reached during the design session. Future ag
 - Parent issue #16 is complete; its acceptance criteria are covered by the merged first increment.
 - OpenCode pilot complete: #24–#27 are implemented, compared, and documented.
 - Reliability matrix complete: #28, #33, and #34 are implemented in the current branch.
-- Legacy quarantine now includes `00-core`, `10-npm-apps`, and `30-system`; active discovery is intentionally empty until the canonical replacement tasks are added.
+- Legacy quarantine includes `00-core`, `10-npm-apps`, and `30-system`; active discovery currently contains only the canonical OpenCode npm task and its explicit reference.
 
 ## Agreed architecture
 
