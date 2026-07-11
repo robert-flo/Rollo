@@ -42,7 +42,7 @@ main() {
     return
   fi
 
-  if [[ $action == "verify" || $action == "run" || $action == "test" || $action == "reset" || $action == "update" || $action == "check-updates" || $action == "baseline" || $action == "--baseline" ]]; then
+  if [[ $action == "verify" || $action == "run" || $action == "test" || $action == "matrix" || $action == "reset" || $action == "update" || $action == "check-updates" || $action == "baseline" || $action == "--baseline" ]]; then
     if [[ $action == "baseline" || $action == "--baseline" ]]; then
       action="run"
       set -- BASELINE
@@ -50,6 +50,10 @@ main() {
       shift
       discover_tasks
       test_selected_tasks "$@"
+      return
+    elif [[ $action == "matrix" ]]; then
+      shift
+      bash "${RAVN_DIR}/tests/opencode-matrix.sh" "$@"
       return
     elif [[ $action == "reset" ]]; then
       shift

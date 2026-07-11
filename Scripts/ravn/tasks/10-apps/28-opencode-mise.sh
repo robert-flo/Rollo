@@ -65,7 +65,11 @@ opencode_write_config() {
   cat > "${config_dir}/mise.toml" << EOF
 [tools]
 node = "${OPENCODE_NODE_REQUEST}"
-"npm:${OPENCODE_PACKAGE}" = { version = "${OPENCODE_VERSION_REQUEST}", allow_builds = true }
+"npm:${OPENCODE_PACKAGE}" = {
+  version = "${OPENCODE_VERSION_REQUEST}",
+  allow_builds = true,
+  npm_args = "--ignore-scripts=false",
+}
 EOF
 }
 
@@ -78,8 +82,7 @@ opencode_install_config() {
   local postinstall=""
 
   opencode_write_config "$config_dir" || return 1
-  "$mise_bin" use --path "$config_file" --pin --yes \
-    "node@${OPENCODE_NODE_REQUEST}" "npm:${OPENCODE_PACKAGE}@${OPENCODE_VERSION_REQUEST}" || return 1
+  "$mise_bin" --cd "$config_dir" install --yes || return 1
 
   install_root=$("$mise_bin" where "npm:${OPENCODE_PACKAGE}@${OPENCODE_VERSION_REQUEST}")
   package_version=$("$mise_bin" exec --cd "$config_dir" -- node -p \
