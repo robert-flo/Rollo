@@ -58,6 +58,17 @@ EOF
   chmod +x "$OPENCODE_WRAPPER"
 }
 
+opencode_write_config() {
+  local config_dir="$1"
+
+  mkdir -p "$config_dir" || return 1
+  cat > "${config_dir}/mise.toml" << EOF
+[tools]
+node = "${OPENCODE_NODE_REQUEST}"
+"npm:${OPENCODE_PACKAGE}" = { version = "${OPENCODE_VERSION_REQUEST}", allow_builds = true }
+EOF
+}
+
 opencode_install_config() {
   local mise_bin="$1"
   local config_dir="$2"
@@ -66,7 +77,7 @@ opencode_install_config() {
   local package_version=""
   local postinstall=""
 
-  mkdir -p "$config_dir" || return 1
+  opencode_write_config "$config_dir" || return 1
   "$mise_bin" use --path "$config_file" --pin --yes \
     "node@${OPENCODE_NODE_REQUEST}" "npm:${OPENCODE_PACKAGE}@${OPENCODE_VERSION_REQUEST}" || return 1
 
