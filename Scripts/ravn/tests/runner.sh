@@ -65,6 +65,14 @@ else
 fi
 [[ ${TASK_RESULTS[0]} == "resettable:reset" ]]
 
+if reset_selected_tasks resettable </dev/null; then
+  printf 'FAIL: non-interactive reset without --yes was accepted\n' >&2
+  exit 1
+else
+  :
+fi
+[[ ${TASK_RESULTS[0]} == "resettable:reset-refused" ]]
+
 if reset_selected_tasks legacy --yes; then
   exit 1
 else

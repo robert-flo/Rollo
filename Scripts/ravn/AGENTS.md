@@ -31,9 +31,14 @@ the legacy task's number when the replacement is a one-for-one migration.
 For issue work, create the worktree with:
 
 ```bash
-/home/ravn/.local/bin/git-issue-worktree <issue-number> <slug> \
-  -r /home/ravn/Work/Rollo/dev -B dev
+/home/ravn/.local/bin/git-issue-worktree \
+  -r /home/ravn/Work/Rollo/dev \
+  -B origin/dev \
+  <issue-number> <slug>
 ```
+
+Options must precede the issue number. This repository uses `origin/dev`, not
+`origin/main`.
 
 Do not commit directly to `dev`; use the issue worktree, then push a branch and
 merge through a pull request.
@@ -137,6 +142,8 @@ bash Scripts/ravn/tests/state.sh
 bash Scripts/ravn/tests/mise.sh
 bash Scripts/ravn/tests/menu.sh
 bash Scripts/ravn/tests/opencode-contract.sh
+bash Scripts/ravn/tests/dry-run.sh
+bash Scripts/ravn/tests/test-task-selection.sh
 ```
 
 If adding a canonical task changes the discovered task count, update the
@@ -169,9 +176,12 @@ Use `--keep` when a failure needs container inspection; remove the container
 after debugging. Use `--dry-run` only to inspect control flow — it does not
 prove installation or command usability.
 
-Reference-only tasks are intentionally skipped unless
-`--include-reference` is supplied. A skipped reference task is not a failed
-active task, but it also is not evidence that the canonical task works.
+Reference-only tasks are excluded from category and `--all` selectors by
+default. They appear in the summary as `Omitidas (reference)`, not as
+`No verificables`. Pass `--include-reference` to run them in Docker.
+
+A skipped reference task is not a failed active task, but it also is not
+evidence that the canonical task works.
 
 ### 4. Lifecycle behavior to exercise
 
@@ -183,8 +193,12 @@ bash Scripts/ravn/setup.sh run <command>
 bash Scripts/ravn/setup.sh verify <command>
 bash Scripts/ravn/setup.sh check-updates <command>
 bash Scripts/ravn/setup.sh update <command>
-bash Scripts/ravn/setup.sh reset <command>
+bash Scripts/ravn/setup.sh reset <command> --yes
 ```
+
+In non-interactive environments (agents, CI, pipes without a TTY), `reset`
+requires `--yes`. Without it, the runner exits with a clear error instead of
+waiting for confirmation or recording a misleading `reset-refused`.
 
 At minimum, prove:
 
@@ -210,9 +224,15 @@ find Scripts/ravn -name '*.sh' -type f -exec bash -n {} +
 find Scripts/ravn -name '*.sh' -type f -print0 | xargs -0 shellcheck
 shfmt -d Scripts/ravn
 flg_DryRun=1 bash Scripts/ravn/setup.sh
+bash Scripts/ravn/tests/dry-run.sh
 bash Scripts/ravn/test-task.sh --all
 git diff --check
 ```
+
+`flg_DryRun=1 bash Scripts/ravn/setup.sh` runs the discovered active-task
+pipeline in dry-run mode (no menu, no install). In a non-interactive shell,
+`setup.sh` without a subcommand exits with usage guidance instead of opening
+the TUI.
 
 The full Docker matrix can require network access and may take time. If it
 cannot run, report the exact command and reason in the handoff; do not claim
@@ -229,7 +249,12 @@ the task is fully validated. Run the focused task test again after every fix.
 - `update-failed`: confirm the previous verified configuration remains active.
 - `rollback-failed`: treat as a blocking reliability failure; do not merge.
 - Docker `NO VERIFICABLE`: inspect `TEST_LEVEL` and whether `verify()` is
-  available; do not interpret it as success.
+  available; do not interpret it as success. Reference-only omissions are
+  reported separately and are not failures.
+- `reset` without `--yes` in a non-interactive shell: pass `--yes` explicitly.
+- `setup.sh` with no subcommand in a non-interactive shell: use
+  `run|verify|reset|update|check-updates <command>` or `flg_DryRun=1` for the
+  pipeline gate.
 
 ## Completion checklist
 

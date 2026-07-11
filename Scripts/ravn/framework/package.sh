@@ -28,6 +28,7 @@ RAVN_DEPENDENCY_MISSING=false
 
 # Set to true for packages requiring user confirmation before install
 INTERACTIVE=false
+REFERENCE_ONLY=false
 
 ravn_source_mise_cli() {
   local framework_path="${RAVN_DIR}/framework/mise-cli.sh"

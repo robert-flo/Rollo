@@ -88,6 +88,41 @@ get_task_metadata() {
   printf '%s' "$metadata"
 }
 
+task_is_reference_only() {
+  local task_file="$1"
+  local metadata=""
+  local reference_only=""
+
+  metadata=$(get_task_metadata "$task_file")
+  IFS='|' read -r _ _ _ reference_only <<<"$metadata"
+  [[ ${reference_only:-false} == true ]]
+}
+
+partition_active_tasks() {
+  local task_file=""
+  local package=""
+  local -a active_tasks=()
+  local -a reference_tasks=()
+
+  ACTIVE_TASKS=()
+  SKIPPED_REFERENCES=()
+
+  for task_file in "$@"; do
+    [[ ! -f $task_file ]] && continue
+    if task_is_reference_only "$task_file"; then
+      metadata=$(get_task_metadata "$task_file")
+      IFS='|' read -r package _ _ _ <<<"$metadata"
+      [[ -z $package ]] && package=$(basename "$task_file" .sh)
+      reference_tasks+=("$package")
+    else
+      active_tasks+=("$task_file")
+    fi
+  done
+
+  ACTIVE_TASKS=("${active_tasks[@]}")
+  SKIPPED_REFERENCES=("${reference_tasks[@]}")
+}
+
 run_static_test() {
   local task_file="$1"
 
@@ -160,8 +195,18 @@ fi
 # Deduplicate
 mapfile -t TASKS_TO_TEST < <(printf "%s\n" "${TASKS_TO_TEST[@]}" | sort -u)
 
+ACTIVE_TASKS=()
+SKIPPED_REFERENCES=()
+if ((INCLUDE_REFERENCES == 0)); then
+  partition_active_tasks "${TASKS_TO_TEST[@]}"
+  TASKS_TO_TEST=("${ACTIVE_TASKS[@]}")
+fi
+
 echo "==> RaVN Task Tester (entorno aislado Docker)"
-echo "    Tareas a probar: ${#TASKS_TO_TEST[@]}"
+echo "    Tareas activas a probar: ${#TASKS_TO_TEST[@]}"
+if ((${#SKIPPED_REFERENCES[@]} > 0)); then
+  echo "    Omitidas (reference-only): ${#SKIPPED_REFERENCES[@]} (${SKIPPED_REFERENCES[*]})"
+fi
 echo ""
 
 FAILED=()
@@ -182,8 +227,7 @@ for task_file in "${TASKS_TO_TEST[@]}"; do
   [[ -z $package ]] && package="$task_name"
 
   if [[ ${reference_only:-false} == true && $INCLUDE_REFERENCES == 0 ]]; then
-    echo "⚠ $package → OMITIDA (reference-only; use --include-reference)"
-    UNSUPPORTED+=("$package")
+    echo "↷ $package → OMITIDA (reference-only; use --include-reference)"
     continue
   fi
 
@@ -326,6 +370,9 @@ echo "════════════════════════�
 echo "Resumen de pruebas"
 echo "  ✓ Pasaron:  ${#PASSED[@]}"
 echo "  ✗ Fallaron: ${#FAILED[@]}"
+if ((${#SKIPPED_REFERENCES[@]} > 0)); then
+  echo "  ↷ Omitidas (reference): ${#SKIPPED_REFERENCES[@]}"
+fi
 echo "  ⚠ No verificables: ${#UNSUPPORTED[@]}"
 if [[ ${#FAILED[@]} -gt 0 ]]; then
   echo "  Fallidos: ${FAILED[*]}"

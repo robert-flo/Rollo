@@ -1,8 +1,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+RAVN_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+export RAVN_DIR
+
+# shellcheck disable=SC1091
+source "${RAVN_DIR}/global_fn.sh"
+for fw in "${RAVN_DIR}"/framework/*.sh; do
+  # shellcheck disable=SC1090
+  source "$fw"
+done
+
 output=""
-output=$(printf 'q\n' | bash "$(dirname "${BASH_SOURCE[0]}")/../setup.sh")
+output=$(printf 'q\n' | run_menu)
 
 grep -q "Verify current configuration" <<<"$output"
 grep -q "Run full setup" <<<"$output"

@@ -22,6 +22,12 @@ run_task() {
   local name="${PACKAGE:-$(basename "$file" .sh)}"
   local log="${log_dir}/${name}.log"
 
+  if ((flg_DryRun == 1)); then
+    info "${name}: Dry-run — omitiendo."
+    count_skip "$name"
+    return 0
+  fi
+
   # ── Configuration registry gate: skip if disabled in packages.conf ──
   if [[ -f "${RAVN_DIR}/config/packages.conf" ]]; then
     if grep -q "^${name}=false" "${RAVN_DIR}/config/packages.conf"; then

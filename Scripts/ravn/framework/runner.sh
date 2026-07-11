@@ -434,7 +434,17 @@ reset_selected_tasks() {
   fi
 
   if ((confirm == 0)); then
-    read -r -p "Escribe RESET para confirmar: " selector
+    if [[ -t 0 ]]; then
+      read -r -p "Escribe RESET para confirmar: " selector
+    elif ! read -r selector; then
+      error_msg "Reset en entorno no interactivo requiere --yes."
+      for file in "${supported[@]}"; do
+        name=$(task_name "$file")
+        _runner_record "$name" "reset-refused"
+      done
+      print_task_results
+      return 1
+    fi
     if [[ $selector != "RESET" ]]; then
       warn_msg "Reset cancelado."
       for file in "${supported[@]}"; do
