@@ -66,6 +66,40 @@ admin_verify_reset
 admin_apply
 admin_verify
 
+# ─── Already-satisfied state ────────────────────────────────────────────────
+if ! admin_apply; then
+  printf 'FAIL: apply returned non-zero on already-satisfied state\n' >&2
+  exit 1
+fi
+admin_verify
+
+# ─── Unrelated packages survive reset ───────────────────────────────────────
+printf '%s\n' firefox vim base-devel opencl-mesa libva-intel-driver clinfo intel-gpu-tools > "$state"
+admin_reset
+if grep -qxF 'firefox' "$state"; then
+  : ok
+else
+  printf 'FAIL: unrelated package firefox was removed during reset\n' >&2
+  exit 1
+fi
+if grep -qxF 'vim' "$state"; then
+  : ok
+else
+  printf 'FAIL: unrelated package vim was removed during reset\n' >&2
+  exit 1
+fi
+if grep -qxF 'base-devel' "$state"; then
+  : ok
+else
+  printf 'FAIL: unrelated package base-devel was removed during reset\n' >&2
+  exit 1
+fi
+admin_verify_reset
+
+# ─── Reinstall after reset ──────────────────────────────────────────────────
+admin_apply
+admin_verify
+
 # ─── Apply failure ───────────────────────────────────────────────────────────
 : > "$state"
 export RAVN_INTEL_SCENARIO=apply-failure

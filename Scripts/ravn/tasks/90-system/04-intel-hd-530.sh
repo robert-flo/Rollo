@@ -21,7 +21,7 @@ ADMIN_REVERSIBILITY="reversible"
 # shellcheck disable=SC2034
 ADMIN_ACTIVATION_BOUNDARY="new user session or display manager restart"
 # shellcheck disable=SC2034
-ADMIN_TEST_LEVEL="isolated"
+ADMIN_TEST_LEVEL="isolated,docker"
 
 readonly CONFLICT_PKGS=(intel-compute-runtime intel-graphics-compiler)
 readonly TARGET_PKGS=(opencl-mesa libva-intel-driver clinfo intel-gpu-tools)
