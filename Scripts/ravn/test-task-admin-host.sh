@@ -55,7 +55,7 @@ done
 [[ $task == ssh-config ]] || die "host task not supported: $task"
 command -v ssh > /dev/null || die 'ssh is required for host verification'
 
-task_file="${RAVN_DIR}/tasks/20-shell/03-ssh-config.sh"
+task_file="${RAVN_DIR}/tasks/90-system/03-ssh-config.sh"
 [[ -f $task_file ]] || die "task not found: $task"
 mkdir -p "$REPORT_DIR"
 report_file="${REPORT_DIR}/${task}-$(date +%Y%m%dT%H%M%S).json"

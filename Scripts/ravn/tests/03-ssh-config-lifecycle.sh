@@ -2,7 +2,7 @@
 set -euo pipefail
 
 RAVN_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
-TASK="${RAVN_DIR}/tasks/20-shell/03-ssh-config.sh"
+TASK="${RAVN_DIR}/tasks/90-system/03-ssh-config.sh"
 
 run_case() {
   local name=$1 initial=${2:-} scenario=${3:-success}

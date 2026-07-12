@@ -19,6 +19,8 @@ Use the existing category that matches the responsibility:
 - `tasks/20-curl-apps/` — vendor shell installers downloaded over HTTPS.
 - `tasks/30-github-apps/` — tools distributed from GitHub and managed by mise.
 - `tasks/20-shell/` — shell tools and shell configuration tasks.
+- `tasks/90-system/` — final system configuration tasks executed after package
+  and shell setup; use this category for administrative end-of-install steps.
 - Add a new category only when an existing category cannot express the task;
   document the new category here and update discovery tests.
 
