@@ -21,6 +21,8 @@ Use the existing category that matches the responsibility:
 - `tasks/20-shell/` — shell tools and shell configuration tasks.
 - `tasks/90-system/` — final system configuration tasks executed after package
   and shell setup; use this category for administrative end-of-install steps.
+- `tasks/80-app-configs/` — application configuration trees and launchers
+  installed from upstream repositories.
 - Add a new category only when an existing category cannot express the task;
   document the new category here and update discovery tests.
 
