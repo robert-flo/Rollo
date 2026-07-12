@@ -1,0 +1,17 @@
+# mise
+- Use mise for managing CLI tools and npm packages instead of homebrew or global npm installs. Confidence: 0.80
+
+# git-workflow
+- Create worktrees from the dev branch for changes, then sync back to dev as the single source of truth. Confidence: 0.75
+- After merging branches to dev, clean up stale worktrees and remote branches to keep the repository tidy. Confidence: 0.65
+
+# testing
+- When refactoring shell scripts, test old vs new side-by-side to verify functional parity before replacing. Confidence: 0.75
+
+# shell
+- When refactoring shared shell libraries (global_fn.sh), maintain backward compatibility so consuming scripts don't need code changes. Confidence: 0.70
+
+# workflow
+- Prefer latest versions over pinned versions when installing packages. Confidence: 0.65
+- Document agreed-upon decisions and plans in docs/ for session continuity and agent guidance. Confidence: 0.70
+- Keep work tickets and PRs atomic for maintainable and testable results. Confidence: 0.70
