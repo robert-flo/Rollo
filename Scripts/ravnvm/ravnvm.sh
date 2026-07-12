@@ -587,10 +587,18 @@ function run_vm() {
 }
 
 function list_snapshots() {
+    local snapshots=""
+
     echo "📸 Available RaVN snapshots:"
     if [ -d "$SNAPSHOTS_DIR" ]; then
-        find "$SNAPSHOTS_DIR" -name "ravn-*.qcow2" -exec basename {} \; |
-            sed 's/^ravn-//' | sed 's/\.qcow2$//' | sort
+        snapshots=$(find "$SNAPSHOTS_DIR" -name "ravn-*.qcow2" -exec basename {} \; |
+            sed 's/^ravn-//' | sed 's/\.qcow2$//' | sort)
+
+        if [ -n "$snapshots" ]; then
+            printf '%s\n' "$snapshots"
+    else
+            echo "No snapshots found"
+    fi
   else
         echo "No snapshots found"
   fi
@@ -598,13 +606,26 @@ function list_snapshots() {
 
 function clean_cache() {
     echo "🧹 Cleaning RavnVM cache (preserving base image)..."
-    if [ -d "$CACHE_DIR" ]; then
-        # Delete snapshots directory and any other temporary files, leaving only the base image
-        find "$CACHE_DIR" -mindepth 1 -maxdepth 1 ! -name "archbase.qcow2" -exec rm -rf {} +
-        # Recreate snapshots directory
-        mkdir -p "$SNAPSHOTS_DIR"
+    if [ ! -d "$CACHE_DIR" ]; then
+        print_error "RavnVM cache directory not found"
+        return 1
   fi
-    echo "✅ Cache cleaned"
+
+    if ! find "$CACHE_DIR" -mindepth 1 -maxdepth 1 ! -name "archbase.qcow2" -exec rm -rf {} +; then
+        print_error "Unable to clean RavnVM cache"
+        return 1
+  fi
+
+    if ! mkdir -p "$SNAPSHOTS_DIR"; then
+        print_error "Unable to recreate snapshots directory"
+        return 1
+  fi
+
+    if [ -f "$BASE_IMAGE" ]; then
+        print_success "Cache cleaned; base image preserved"
+  else
+        print_success "Cache cleaned"
+  fi
 }
 
 # ┌──────────────────────────────────────────────────────────────────────────────┐
