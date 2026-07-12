@@ -859,7 +859,7 @@ show_menu() {
   echo -e "  ${RAVN_ICON[ui_trash]} ${GREEN}4${NC}  Clean local config (fresh start)"
   echo -e "  ${RAVN_ICON[ui_close]} ${GREEN}q${NC}  Exit"
   echo ""
-  echo -ne "  Selection: "
+  echo -ne "  ${LIGHT_GRAY}Selection:${NC} "
 }
 
 do_verify() {

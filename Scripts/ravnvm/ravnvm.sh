@@ -745,7 +745,7 @@ function recover_environment() {
     echo -e "  ${GREEN}1${NC}  ${ICON_UI_PACKAGE}  Install dependencies"
     echo -e "  ${GREEN}q${NC}  ${ICON_UI_CLOSE}  Exit"
     echo ""
-    read -r -p "Selection: " recovery_choice
+    read -r -p "${LIGHT_GRAY}Selection:${NC} " recovery_choice
 
     case "$recovery_choice" in
       1)
@@ -779,7 +779,7 @@ function show_menu() {
   echo -e "  ${GREEN}6${NC}  ${ICON_UI_PACKAGE}  Install dependencies"
   echo -e "  ${GREEN}q${NC}  ${ICON_UI_CLOSE}  Exit"
   echo ""
-  read -r -p "Selection: " MENU_CHOICE
+  read -r -p "${LIGHT_GRAY}Selection:${NC} " MENU_CHOICE
 }
 
 function get_current_branch() {
