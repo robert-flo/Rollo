@@ -27,6 +27,7 @@ readonly SUDOERS_AI="/etc/sudoers.d/99-ai-tools"
 readonly SUDOERS_HERMES="/etc/sudoers.d/hermes-nopasswd"
 readonly SYSTEMLIMITS_CONF="/etc/systemd/system.conf.d/99-limits.conf"
 readonly USER_OVERRIDE="/etc/systemd/system/user@.service.d/override.conf"
+AI_CREATED_FILES=()
 
 _run_as_root() {
   if ((EUID == 0)); then
@@ -95,6 +96,7 @@ admin_apply() {
   fi
 
   if ! _polkit_valid; then
+    _file_exists "$POLKIT_RULES" || AI_CREATED_FILES+=("$POLKIT_RULES")
     _run_as_root mkdir -p "$(dirname "$POLKIT_RULES")"
     _run_as_root tee "$POLKIT_RULES" > /dev/null << 'EOF'
 /* Allow wheel users to execute commands without password */
@@ -113,6 +115,7 @@ EOF
   fi
 
   if ! _sudoers_ai_valid; then
+    _file_exists "$SUDOERS_AI" || AI_CREATED_FILES+=("$SUDOERS_AI")
     _run_as_root mkdir -p "$(dirname "$SUDOERS_AI")"
     _run_as_root tee "$SUDOERS_AI" > /dev/null << 'EOF'
 # Keep important environment variables
@@ -137,6 +140,7 @@ EOF
   fi
 
   if ! _sudoers_hermes_valid; then
+    _file_exists "$SUDOERS_HERMES" || AI_CREATED_FILES+=("$SUDOERS_HERMES")
     _run_as_root tee "$SUDOERS_HERMES" > /dev/null << 'EOF'
 dominus ALL=(ALL) NOPASSWD: ALL
 EOF
@@ -148,6 +152,7 @@ EOF
   fi
 
   if ! _system_limits_valid; then
+    _file_exists "$SYSTEMLIMITS_CONF" || AI_CREATED_FILES+=("$SYSTEMLIMITS_CONF")
     _run_as_root mkdir -p "$(dirname "$SYSTEMLIMITS_CONF")"
     _run_as_root tee "$SYSTEMLIMITS_CONF" > /dev/null << 'EOF'
 [Manager]
@@ -156,6 +161,7 @@ EOF
   fi
 
   if ! _user_override_valid; then
+    _file_exists "$USER_OVERRIDE" || AI_CREATED_FILES+=("$USER_OVERRIDE")
     _run_as_root mkdir -p "$(dirname "$USER_OVERRIDE")"
     _run_as_root tee "$USER_OVERRIDE" > /dev/null << 'EOF'
 [Service]
@@ -187,19 +193,17 @@ admin_rollback() {
 }
 
 admin_reset() {
-  _run_as_root rm -f "$POLKIT_RULES"
-  _run_as_root rm -f "$SUDOERS_AI"
-  _run_as_root rm -f "$SUDOERS_HERMES"
-  _run_as_root rm -f "$SYSTEMLIMITS_CONF"
-  _run_as_root rm -f "$USER_OVERRIDE"
+  local file=""
+  for file in "${AI_CREATED_FILES[@]}"; do
+    _run_as_root rm -f "$file"
+  done
 }
 
 admin_verify_reset() {
-  ! _file_exists "$POLKIT_RULES" || return 1
-  ! _file_exists "$SUDOERS_AI" || return 1
-  ! _file_exists "$SUDOERS_HERMES" || return 1
-  ! _file_exists "$SYSTEMLIMITS_CONF" || return 1
-  ! _file_exists "$USER_OVERRIDE" || return 1
+  local file=""
+  for file in "${AI_CREATED_FILES[@]}"; do
+    ! _file_exists "$file" || return 1
+  done
   return 0
 }
 

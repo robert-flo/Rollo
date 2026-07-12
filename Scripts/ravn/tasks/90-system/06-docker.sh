@@ -28,6 +28,9 @@ readonly RESOLVED_DNS_CONF="${RAVN_DOCKER_RESOLVED_DNS_CONF:-/etc/systemd/resolv
 readonly NO_BLOCK_CONF="${RAVN_DOCKER_NO_BLOCK_CONF:-/etc/systemd/system/docker.service.d/no-block-boot.conf}"
 readonly DOCKER_SOCKET="docker.socket"
 flg_DryRun=${flg_DryRun:-0}
+DOCKER_FILES_CREATED=()
+DOCKER_GROUP_ADDED_BY_TASK=false
+DOCKER_SOCKET_ENABLED_BY_TASK=false
 
 _run_as_root() {
   if ((EUID == 0)); then
@@ -110,6 +113,7 @@ admin_apply() {
   fi
 
   if ! _file_contains "$DAEMON_JSON" '"log-driver": "json-file"'; then
+    [[ -f $DAEMON_JSON ]] || DOCKER_FILES_CREATED+=("$DAEMON_JSON")
     _run_as_root mkdir -p /etc/docker
     _run_as_root tee "$DAEMON_JSON" > /dev/null << 'EOF'
 {
@@ -122,6 +126,7 @@ EOF
   fi
 
   if ! _file_contains "$RESOLVED_DNS_CONF" 'DNSStubListenerExtra=172.17.0.1'; then
+    [[ -f $RESOLVED_DNS_CONF ]] || DOCKER_FILES_CREATED+=("$RESOLVED_DNS_CONF")
     _run_as_root mkdir -p /etc/systemd/resolved.conf.d
     _run_as_root tee "$RESOLVED_DNS_CONF" > /dev/null << 'EOF'
 [Resolve]
@@ -130,14 +135,18 @@ EOF
   fi
   _run_as_root systemctl restart systemd-resolved || return 1
 
-  _systemctl_enabled "$DOCKER_SOCKET" && _systemctl_active "$DOCKER_SOCKET" ||
+  if ! _systemctl_enabled "$DOCKER_SOCKET" || ! _systemctl_active "$DOCKER_SOCKET"; then
     _run_as_root systemctl enable --now "$DOCKER_SOCKET" || return 1
+    DOCKER_SOCKET_ENABLED_BY_TASK=true
+  fi
 
   if ! _user_in_docker_group; then
     _run_as_root usermod -aG docker "$USER" || return 1
+    DOCKER_GROUP_ADDED_BY_TASK=true
   fi
 
   if ! _file_contains "$NO_BLOCK_CONF" 'DefaultDependencies=no'; then
+    [[ -f $NO_BLOCK_CONF ]] || DOCKER_FILES_CREATED+=("$NO_BLOCK_CONF")
     _run_as_root mkdir -p /etc/systemd/system/docker.service.d
     _run_as_root tee "$NO_BLOCK_CONF" > /dev/null << 'EOF'
 [Unit]
@@ -180,27 +189,35 @@ admin_rollback() {
 admin_reset() {
   admin_plan || return 1
 
-  if _systemctl_enabled "$DOCKER_SOCKET"; then
+  if [[ $DOCKER_SOCKET_ENABLED_BY_TASK == true ]] && _systemctl_enabled "$DOCKER_SOCKET"; then
     _run_as_root systemctl disable --now "$DOCKER_SOCKET" || true
+    DOCKER_SOCKET_ENABLED_BY_TASK=false
   fi
 
-  _run_as_root rm -f "$NO_BLOCK_CONF" || true
-  _run_as_root rm -f "$RESOLVED_DNS_CONF" || true
-  _run_as_root rm -f "$DAEMON_JSON" || true
+  local file=""
+  for file in "${DOCKER_FILES_CREATED[@]}"; do
+    _run_as_root rm -f "$file" || true
+  done
 
-  if _user_in_docker_group; then
+  if [[ $DOCKER_GROUP_ADDED_BY_TASK == true ]] && _user_in_docker_group; then
     _run_as_root gpasswd -d "$USER" docker || true
+    DOCKER_GROUP_ADDED_BY_TASK=false
   fi
 
   return 0
 }
 
 admin_verify_reset() {
-  ! _systemctl_enabled "$DOCKER_SOCKET" || return 1
-  ! _file_contains "$NO_BLOCK_CONF" 'DefaultDependencies=no' || return 1
-  ! _file_contains "$RESOLVED_DNS_CONF" 'DNSStubListenerExtra=172.17.0.1' || return 1
-  ! _file_contains "$DAEMON_JSON" '"log-driver": "json-file"' || return 1
-  ! _user_in_docker_group || return 1
+  if [[ $DOCKER_SOCKET_ENABLED_BY_TASK == true ]]; then
+    ! _systemctl_enabled "$DOCKER_SOCKET" || return 1
+  fi
+  local file=""
+  for file in "${DOCKER_FILES_CREATED[@]}"; do
+    [[ -f $file ]] && return 1
+  done
+  if [[ $DOCKER_GROUP_ADDED_BY_TASK == true ]]; then
+    ! _user_in_docker_group || return 1
+  fi
   return 0
 }
 

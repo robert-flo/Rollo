@@ -21,6 +21,7 @@ ADMIN_ACTIVATION_BOUNDARY="user systemd session"
 ADMIN_TEST_LEVEL="isolated,docker,host"
 
 SSH_AGENT_UNIT="ssh-agent.socket"
+SSH_AGENT_ENABLED_BY_TASK=false
 
 admin_plan() {
   ADMIN_PLAN_ACTIONS=("enable and start the user ssh-agent socket")
@@ -28,7 +29,12 @@ admin_plan() {
 }
 
 admin_apply() {
-  systemctl --user enable --now "$SSH_AGENT_UNIT"
+  if systemctl --user is-enabled "$SSH_AGENT_UNIT" > /dev/null 2>&1 ||
+    systemctl --user is-active "$SSH_AGENT_UNIT" > /dev/null 2>&1; then
+    return 0
+  fi
+  systemctl --user enable --now "$SSH_AGENT_UNIT" || return 1
+  SSH_AGENT_ENABLED_BY_TASK=true
 }
 
 admin_verify() {
@@ -37,17 +43,19 @@ admin_verify() {
 }
 
 admin_rollback() {
-  systemctl --user disable --now "$SSH_AGENT_UNIT"
+  admin_reset
 }
 
 admin_reset() {
-  if systemctl --user is-enabled "$SSH_AGENT_UNIT" > /dev/null 2>&1 ||
-    systemctl --user is-active "$SSH_AGENT_UNIT" > /dev/null 2>&1; then
+  if [[ $SSH_AGENT_ENABLED_BY_TASK == true ]] &&
+    (systemctl --user is-enabled "$SSH_AGENT_UNIT" > /dev/null 2>&1 ||
+      systemctl --user is-active "$SSH_AGENT_UNIT" > /dev/null 2>&1); then
     systemctl --user disable --now "$SSH_AGENT_UNIT"
+    SSH_AGENT_ENABLED_BY_TASK=false
   fi
 }
 
 admin_verify_reset() {
-  ! systemctl --user is-enabled "$SSH_AGENT_UNIT" > /dev/null 2>&1 &&
-    ! systemctl --user is-active "$SSH_AGENT_UNIT" > /dev/null 2>&1
+  [[ $SSH_AGENT_ENABLED_BY_TASK == false ]] || return 1
+  return 0
 }

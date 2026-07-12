@@ -108,3 +108,13 @@ admin_reset() {
   chmod 600 "$temp"
   mv "$temp" "$SSH_CONFIG"
 }
+
+admin_verify_reset() {
+  [[ ! -f $SSH_CONFIG ]] || ! grep -q "$SSH_MARKER_START" "$SSH_CONFIG"
+}
+
+check() { admin_verify; }
+install() { admin_apply; }
+verify() { admin_verify; }
+reset() { admin_reset; }
+verify_reset() { admin_verify_reset; }

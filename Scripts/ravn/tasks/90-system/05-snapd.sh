@@ -27,6 +27,8 @@ readonly SNAPD_SOCKET="snapd.socket"
 readonly SNAP_LINK="/snap"
 readonly SNAP_TARGET="/var/lib/snapd/snap"
 flg_DryRun=${flg_DryRun:-0}
+SNAPD_SERVICES_ENABLED_BY_TASK=()
+SNAP_LINK_CREATED_BY_TASK=false
 
 _run_as_root() {
   if ((EUID == 0)); then
@@ -90,13 +92,18 @@ admin_apply() {
     fi
   fi
 
-  _systemctl_enabled "$APPARMOR_SERVICE" && _systemctl_active "$APPARMOR_SERVICE" ||
+  if ! (_systemctl_enabled "$APPARMOR_SERVICE" && _systemctl_active "$APPARMOR_SERVICE"); then
     _run_as_root systemctl enable --now "$APPARMOR_SERVICE" || return 1
-  _systemctl_enabled "$SNAPD_SOCKET" && _systemctl_active "$SNAPD_SOCKET" ||
+    SNAPD_SERVICES_ENABLED_BY_TASK+=("$APPARMOR_SERVICE")
+  fi
+  if ! (_systemctl_enabled "$SNAPD_SOCKET" && _systemctl_active "$SNAPD_SOCKET"); then
     _run_as_root systemctl enable --now "$SNAPD_SOCKET" || return 1
+    SNAPD_SERVICES_ENABLED_BY_TASK+=("$SNAPD_SOCKET")
+  fi
 
   if ! _symlink_correct; then
     _run_as_root ln -sf "$SNAP_TARGET" "$SNAP_LINK" || return 1
+    SNAP_LINK_CREATED_BY_TASK=true
   fi
 
   while ! _systemctl_active "$SNAPD_SOCKET" && ((attempts < 15)); do
@@ -132,22 +139,23 @@ admin_rollback() {
 admin_reset() {
   admin_plan || return 1
 
-  if _systemctl_enabled "$SNAPD_SOCKET"; then
-    _run_as_root systemctl disable --now "$SNAPD_SOCKET" || true
-  fi
-  if _systemctl_enabled "$APPARMOR_SERVICE"; then
-    _run_as_root systemctl disable --now "$APPARMOR_SERVICE" || true
-  fi
-  if _symlink_correct; then
+  local service=""
+  for service in "${SNAPD_SERVICES_ENABLED_BY_TASK[@]}"; do
+    _run_as_root systemctl disable --now "$service" || true
+  done
+  if [[ $SNAP_LINK_CREATED_BY_TASK == true ]] && _symlink_correct; then
     _run_as_root rm -f "$SNAP_LINK" || true
+    SNAP_LINK_CREATED_BY_TASK=false
   fi
   return 0
 }
 
 admin_verify_reset() {
-  ! _systemctl_enabled "$APPARMOR_SERVICE" || return 1
-  ! _systemctl_enabled "$SNAPD_SOCKET" || return 1
-  ! _symlink_correct || return 1
+  local service=""
+  for service in "${SNAPD_SERVICES_ENABLED_BY_TASK[@]}"; do
+    ! _systemctl_enabled "$service" || return 1
+  done
+  [[ $SNAP_LINK_CREATED_BY_TASK == false ]] || return 1
   return 0
 }
 

@@ -34,6 +34,7 @@ readonly RESOLV_LINK="${RAVN_DNS_RESOLV_LINK:-/etc/resolv.conf}"
 readonly RESOLV_TARGET="/run/systemd/resolve/stub-resolv.conf"
 readonly UFW_RULES="${RAVN_DNS_UFW_RULES:-/etc/ufw/before.rules}"
 readonly BACKUP_DIR="${RAVN_DNS_BACKUP_DIR:-/var/lib/ravn/dns-cloudflare-backup}"
+DNS_FILES_CREATED=()
 
 _run_as_root() {
   if ((EUID == 0)); then
@@ -132,6 +133,7 @@ EOF
     _run_as_root ln -sf "$RESOLV_TARGET" "$RESOLV_LINK" || return 1
   fi
 
+  [[ -f $NM_CONF ]] || DNS_FILES_CREATED+=("$NM_CONF")
   _write_file "$NM_CONF" << 'EOF' || return 1
 [main]
 dns=default
@@ -143,6 +145,7 @@ wifi.powersave=2
 ethernet.cloned-mac-address=preserve
 EOF
 
+  [[ -f $DISPATCHER ]] || DNS_FILES_CREATED+=("$DISPATCHER")
   _write_file "$DISPATCHER" << 'EOF' || return 1
 #!/usr/bin/env bash
 INTERFACE="$1"
@@ -164,6 +167,7 @@ EOF
     done < <(nmcli -t -f NAME connection show --active 2> /dev/null || true)
   fi
 
+  [[ -f $BBR_CONF ]] || DNS_FILES_CREATED+=("$BBR_CONF")
   _write_file "$BBR_CONF" << 'EOF' || return 1
 net.core.rmem_max = 16777216
 net.core.wmem_max = 16777216
@@ -183,6 +187,7 @@ net.ipv4.tcp_keepalive_probes = 5
 net.ipv4.tcp_keepalive_intvl = 15
 EOF
 
+  [[ -f $OVERRIDE_SCRIPT ]] || DNS_FILES_CREATED+=("$OVERRIDE_SCRIPT")
   _write_file "$OVERRIDE_SCRIPT" << 'EOF' || return 1
 #!/usr/bin/env bash
 sleep 3
@@ -197,6 +202,7 @@ done
 EOF
   _run_as_root chmod +x "$OVERRIDE_SCRIPT" || return 1
 
+  [[ -f $OVERRIDE_SERVICE ]] || DNS_FILES_CREATED+=("$OVERRIDE_SERVICE")
   _write_file "$OVERRIDE_SERVICE" << 'EOF' || return 1
 [Unit]
 Description=Force Cloudflare DNS on network interface
@@ -255,7 +261,10 @@ admin_rollback() { admin_reset; }
 admin_reset() {
   admin_plan || return 1
   _run_as_root systemctl disable --now force-dns-override.service > /dev/null 2>&1 || true
-  _run_as_root rm -f "$NM_CONF" "$DISPATCHER" "$BBR_CONF" "$OVERRIDE_SCRIPT" "$OVERRIDE_SERVICE" || true
+  local file=""
+  for file in "${DNS_FILES_CREATED[@]}"; do
+    _run_as_root rm -f "$file" || true
+  done
   if [[ -f $BACKUP_DIR/resolved.conf ]]; then
     _run_as_root cp -p "$BACKUP_DIR/resolved.conf" "$RESOLVED_CONF" || true
   fi
@@ -263,8 +272,11 @@ admin_reset() {
 }
 
 admin_verify_reset() {
-  ! [[ -x $DISPATCHER ]] && ! [[ -f $NM_CONF ]] && ! [[ -f $BBR_CONF ]] &&
-    ! [[ -f $OVERRIDE_SCRIPT ]] && ! [[ -f $OVERRIDE_SERVICE ]]
+  local file=""
+  for file in "${DNS_FILES_CREATED[@]}"; do
+    [[ -e $file ]] && return 1
+  done
+  return 0
 }
 
 check() { admin_verify; }
