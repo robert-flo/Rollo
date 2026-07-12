@@ -23,12 +23,24 @@ ADMIN_TEST_LEVEL="isolated,docker,host"
 LOCAL_SEND_PORT="53317"
 LOCAL_SEND_RULE_COMMENT="ravn-localsend"
 
+_run_as_root() {
+  if ((EUID == 0)); then
+    "$@"
+  else
+    sudo "$@"
+  fi
+}
+
+_can_elevate() {
+  ((EUID == 0)) || command -v sudo > /dev/null 2>&1
+}
+
 _ufw_status() {
-  sudo ufw status
+  _run_as_root ufw status
 }
 
 _ufw_active() {
-  systemctl is-active --quiet ufw
+  _run_as_root systemctl is-active --quiet ufw
 }
 
 _ufw_rule_present() {
@@ -56,7 +68,7 @@ _ufw_conflict() {
 
 admin_plan() {
   ADMIN_PLAN_ACTIONS=("allow LocalSend TCP/UDP port ${LOCAL_SEND_PORT}" "preserve unrelated UFW rules")
-  command -v sudo > /dev/null 2>&1 &&
+  _can_elevate &&
     command -v ufw > /dev/null 2>&1 &&
     command -v systemctl > /dev/null 2>&1 || return 1
   _ufw_active || return 1
@@ -69,9 +81,9 @@ admin_plan() {
 admin_apply() {
   admin_plan || return 1
   _ufw_rule_present tcp ||
-    sudo ufw allow "${LOCAL_SEND_PORT}/tcp" comment "$LOCAL_SEND_RULE_COMMENT" || return 1
+    _run_as_root ufw allow "${LOCAL_SEND_PORT}/tcp" comment "$LOCAL_SEND_RULE_COMMENT" || return 1
   _ufw_rule_present udp ||
-    sudo ufw allow "${LOCAL_SEND_PORT}/udp" comment "$LOCAL_SEND_RULE_COMMENT"
+    _run_as_root ufw allow "${LOCAL_SEND_PORT}/udp" comment "$LOCAL_SEND_RULE_COMMENT"
 }
 
 admin_verify() {
@@ -84,8 +96,8 @@ admin_rollback() {
 
 admin_reset() {
   admin_plan || return 1
-  _ufw_managed_rule_present tcp && sudo ufw delete allow "${LOCAL_SEND_PORT}/tcp" || true
-  _ufw_managed_rule_present udp && sudo ufw delete allow "${LOCAL_SEND_PORT}/udp" || true
+  _ufw_managed_rule_present tcp && _run_as_root ufw delete allow "${LOCAL_SEND_PORT}/tcp" || true
+  _ufw_managed_rule_present udp && _run_as_root ufw delete allow "${LOCAL_SEND_PORT}/udp" || true
   ! _ufw_managed_rule_present tcp && ! _ufw_managed_rule_present udp
 }
 

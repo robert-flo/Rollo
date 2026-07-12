@@ -34,10 +34,13 @@ _run_as_root() {
   fi
 }
 
+_can_elevate() {
+  ((EUID == 0)) || command -v sudo > /dev/null 2>&1
+}
+
 _pkg_installed() {
   _run_as_root pacman -Q "$1" > /dev/null 2>&1
 }
-
 
 _admin_targets_missing() {
   for pkg in "${TARGET_PKGS[@]}"; do
@@ -53,7 +56,7 @@ admin_plan() {
     "install mesa OpenCL, VA-API driver, and Intel diagnostics"
     "remove conflicting Intel Neo/Compute Runtime packages"
   )
-  command -v sudo > /dev/null 2>&1 &&
+  _can_elevate &&
     command -v pacman > /dev/null 2>&1 || return 1
   return 0
 }
