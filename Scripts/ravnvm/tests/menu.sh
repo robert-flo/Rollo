@@ -33,6 +33,10 @@ export XDG_CACHE_HOME="$FIXTURE_DIR/cache"
 
 menu_output=$(printf 'q\n' | "$RAVNVM_SCRIPT")
 assert_contains "$menu_output" "Choose an action"
+assert_contains "$menu_output" "Run master branch"
+assert_contains "$menu_output" "Run dev branch"
+assert_contains "$menu_output" "Run current branch"
+assert_contains "$menu_output" "Run other branch or commit"
 assert_contains "$menu_output" "Goodbye!"
 
 invalid_output=$(printf 'x\n\nq\n' | "$RAVNVM_SCRIPT")
@@ -41,6 +45,15 @@ assert_contains "$invalid_output" "Invalid option: x"
 revision_output=$(printf '1\nq\nq\n' | "$RAVNVM_SCRIPT")
 assert_contains "$revision_output" "Choose VM mode"
 assert_contains "$revision_output" "Ephemeral"
+assert_contains "$revision_output" "Persistent"
+assert_contains "$revision_output" "Back"
+
+revision_choices_output=$(printf '2\nq\n3\nq\nq\n' | "$RAVNVM_SCRIPT")
+assert_contains "$revision_choices_output" "Run dev branch"
+assert_contains "$revision_choices_output" "Run current branch"
+
+empty_revision_output=$(printf '4\n\n\nq\n' | "$RAVNVM_SCRIPT")
+assert_contains "$empty_revision_output" "A branch or commit is required"
 
 help_output=$("$RAVNVM_SCRIPT" --help)
 assert_contains "$help_output" "Usage: ravnvm"
