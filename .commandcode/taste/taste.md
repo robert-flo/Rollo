@@ -7,6 +7,7 @@
 
 # testing
 - When refactoring shell scripts, test old vs new side-by-side to verify functional parity before replacing. Confidence: 0.75
+- Include visual section separators (e.g., `# ─── Happy path ───`) in lifecycle test files for readability and consistency. Confidence: 0.70
 
 # shell
 - When refactoring shared shell libraries (global_fn.sh), maintain backward compatibility so consuming scripts don't need code changes. Confidence: 0.70
@@ -15,3 +16,6 @@
 - Prefer latest versions over pinned versions when installing packages. Confidence: 0.65
 - Document agreed-upon decisions and plans in docs/ for session continuity and agent guidance. Confidence: 0.70
 - Keep work tickets and PRs atomic for maintainable and testable results. Confidence: 0.70
+
+# testing
+- When completing a migration/refactoring ticket, run the full relevant test suite (not just discovery) to verify functionality before declaring done. Confidence: 0.60
