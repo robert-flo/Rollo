@@ -6,12 +6,34 @@ if ! source "$(dirname "$(realpath "${BASH_SOURCE[0]}")")/../global_fn.sh"; then
     exit 1
 fi
 
-# RavnVM - Simplified VM tool for RaVN contributors
-# Works on both Arch Linux and NixOS with automatic OS detection
+# ╭──────────────────────────────────────────────────────────────────────────────╮
+# │                                                                              │
+# │                 RavnVM — QEMU/KVM Development Environment                   │
+# │                                                                              │
+# │       Development tool for testing RaVN branches and commits in VMs         │
+# │                                                                              │
+# ╰──────────────────────────────────────────────────────────────────────────────╯
+# ╔══════════════════════════════════════════════════════════════════════════════╗
+# ║                         RavnVM — Documentation                              ║
+# ╚══════════════════════════════════════════════════════════════════════════════╝
+#
+# USAGE
+#   ravnvm              — Validate the environment and open the menu
+#   ravnvm <revision>   — Run a branch or commit directly
+#   ravnvm --persist    — Run with persistent VM changes
+#
+# DIRECT OPTIONS
+#   --list              — List cached snapshots
+#   --clean             — Remove cached VM state
+#   --check-deps        — Check host dependencies
+#   --install-deps      — Install host dependencies on Arch Linux
+#   --help              — Show command help
 
 set -e
 
-# Configuration
+# ┌──────────────────────────────────────────────────────────────────────────────┐
+# │ Configuration                                                                │
+# └──────────────────────────────────────────────────────────────────────────────┘
 CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/ravnvm"
 BASE_IMAGE="$CACHE_DIR/archbase.qcow2"
 SNAPSHOTS_DIR="$CACHE_DIR/snapshots"
@@ -26,6 +48,10 @@ ARCH_PACKAGES=(
 
 # Create cache directories
 mkdir -p "$CACHE_DIR" "$SNAPSHOTS_DIR"
+
+# ┌──────────────────────────────────────────────────────────────────────────────┐
+# │ Environment & Dependencies                                                   │
+# └──────────────────────────────────────────────────────────────────────────────┘
 
 function detect_os() {
     if [ -f /etc/os-release ]; then
@@ -265,6 +291,10 @@ function check_deps_only() {
   fi
 }
 
+# ┌──────────────────────────────────────────────────────────────────────────────┐
+# │ QEMU Runtime                                                                 │
+# └──────────────────────────────────────────────────────────────────────────────┘
+
 function get_qemu_command() {
     # Try to find qemu-system-x86_64 in common locations
     if command -v qemu-system-x86_64 > /dev/null 2>&1; then
@@ -340,6 +370,10 @@ function run_qemu_vm() {
     fi
   fi
 }
+
+# ┌──────────────────────────────────────────────────────────────────────────────┐
+# │ Images & Snapshots                                                           │
+# └──────────────────────────────────────────────────────────────────────────────┘
 
 function get_latest_arch_image_url() {
     echo "https://geo.mirror.pkgbuild.com/images/latest/Arch-Linux-x86_64-basic.qcow2"
@@ -572,6 +606,10 @@ function clean_cache() {
   fi
     echo "✅ Cache cleaned"
 }
+
+# ┌──────────────────────────────────────────────────────────────────────────────┐
+# │ Interactive Interface                                                        │
+# └──────────────────────────────────────────────────────────────────────────────┘
 
 function press_enter_to_continue() {
   read -r -p "Press Enter to continue..." _
@@ -871,6 +909,10 @@ function run_interactive_menu() {
     esac
   done
 }
+
+# ┌──────────────────────────────────────────────────────────────────────────────┐
+# │ Entry Point                                                                  │
+# └──────────────────────────────────────────────────────────────────────────────┘
 
 # Main logic
 check_root
