@@ -35,6 +35,12 @@ case "${1:-}" in
 esac
 EOF
 
+cat > "$fake_bin/yay" << 'EOF'
+#!/usr/bin/env bash
+printf 'yay\n' >> "${RAVN_SNAPD_INSTALLERS_STATE:?}"
+exec pacman "$@"
+EOF
+
 cat > "$fake_bin/systemctl" << 'EOF'
 #!/usr/bin/env bash
 set -uo pipefail
@@ -96,9 +102,11 @@ export PATH="$fake_bin:$PATH"
 export RAVN_SNAPD_PKGS_STATE="$state_pkgs"
 export RAVN_SNAPD_SVCS_STATE="$state_svcs"
 export RAVN_SNAPD_LINK_STATE="$state_link"
+export RAVN_SNAPD_INSTALLERS_STATE="$root/installers"
 printf 'absent\n' > "$state_link"
 : > "$state_pkgs"
 : > "$state_svcs"
+: > "$RAVN_SNAPD_INSTALLERS_STATE"
 # shellcheck disable=SC1090,SC1091
 source "$RAVN_DIR/tasks/90-system/05-snapd.sh"
 
@@ -112,8 +120,27 @@ _symlink_correct() {
 admin_plan
 admin_apply
 admin_verify
+
+# --- AUR installer path ------------------------------------------------------
+grep -qxF yay "$RAVN_SNAPD_INSTALLERS_STATE" || {
+  printf 'FAIL: yay installer path was not used\n' >&2
+  exit 1
+}
 admin_apply
 admin_verify
+
+# --- Dry-run leaves the desired state unchanged -----------------------------
+: > "$state_pkgs"
+: > "$state_svcs"
+printf 'absent\n' > "$state_link"
+flg_DryRun=1
+admin_apply
+[[ ! -s $state_pkgs && ! -s $state_svcs ]] || {
+  printf 'FAIL: dry-run changed snapd state\n' >&2
+  exit 1
+}
+# shellcheck disable=SC2034
+flg_DryRun=0
 admin_rollback
 admin_verify_reset
 admin_reset
