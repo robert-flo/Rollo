@@ -774,7 +774,7 @@ function show_menu() {
   echo -e "  ${GREEN}1${NC}  ${ICON_GIT_BRANCH}  Run master branch"
   echo -e "  ${GREEN}2${NC}  ${ICON_GIT_BRANCH}  Run dev branch"
   echo -e "  ${GREEN}3${NC}  ${ICON_GIT_BRANCH}  Run current branch"
-  echo -e "  ${GREEN}4${NC}  ${ICON_UI_SEARCH}  Run other branch or commit"
+  echo -e "  ${GREEN}4${NC}  ${ICON_GIT_BRANCH}  Run other branch or commit"
   echo -e "  ${GREEN}5${NC}  ${ICON_UI_STORAGE}  Show VM storage usage"
   echo -e "  ${GREEN}6${NC}  ${ICON_UI_TRASH}  Clean VM cache"
   echo -e "  ${GREEN}7${NC}  ${ICON_UI_LIST}  List VM snapshots"
