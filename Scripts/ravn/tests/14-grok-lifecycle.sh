@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Lifecycle contract for tasks/20-curl-apps/14-grok.sh
 set -euo pipefail
 
 RAVN_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
