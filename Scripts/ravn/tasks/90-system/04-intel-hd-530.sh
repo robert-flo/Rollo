@@ -25,6 +25,7 @@ ADMIN_TEST_LEVEL="isolated,docker"
 
 readonly CONFLICT_PKGS=(intel-compute-runtime intel-graphics-compiler)
 readonly TARGET_PKGS=(opencl-mesa libva-intel-driver clinfo intel-gpu-tools)
+INTEL_INSTALLED_BY_TASK=()
 
 _run_as_root() {
   if ((EUID == 0)); then
@@ -70,12 +71,17 @@ admin_apply() {
     fi
   done
 
-  _admin_targets_missing || return 0
-  _run_as_root pacman -S --needed --noconfirm "${TARGET_PKGS[@]}"
+  INTEL_INSTALLED_BY_TASK=()
+  for pkg in "${TARGET_PKGS[@]}"; do
+    _pkg_installed "$pkg" || INTEL_INSTALLED_BY_TASK+=("$pkg")
+  done
+  ((${#INTEL_INSTALLED_BY_TASK[@]} > 0)) || return 0
+  _run_as_root pacman -S --needed --noconfirm "${TARGET_PKGS[@]}" || return 1
+  INTEL_INSTALLED_BY_TASK=("${TARGET_PKGS[@]}")
 }
 
 admin_verify() {
-  for pkg in "${TARGET_PKGS[@]}"; do
+  for pkg in "${INTEL_INSTALLED_BY_TASK[@]}"; do
     _pkg_installed "$pkg" || return 1
   done
   for pkg in "${CONFLICT_PKGS[@]}"; do
@@ -99,7 +105,7 @@ admin_reset() {
 }
 
 admin_verify_reset() {
-  for pkg in "${TARGET_PKGS[@]}"; do
+  for pkg in "${INTEL_INSTALLED_BY_TASK[@]}"; do
     _pkg_installed "$pkg" && return 1
   done
   return 0

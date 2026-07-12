@@ -110,24 +110,24 @@ admin_verify
 
 # ─── Rollback removes files, groups preserved ─────────────────────────────────
 admin_rollback
-! _file_exists "$POLKIT_RULES" || {
-  printf 'FAIL: polkit rules not removed after rollback\n' >&2
+_file_exists "$POLKIT_RULES" || {
+  printf 'FAIL: pre-existing polkit rules were removed after rollback\n' >&2
   exit 1
 }
-! _file_exists "$SUDOERS_AI" || {
-  printf 'FAIL: sudoers ai not removed after rollback\n' >&2
+_file_exists "$SUDOERS_AI" || {
+  printf 'FAIL: pre-existing sudoers ai was removed after rollback\n' >&2
   exit 1
 }
-! _file_exists "$SUDOERS_HERMES" || {
-  printf 'FAIL: sudoers hermes not removed after rollback\n' >&2
+_file_exists "$SUDOERS_HERMES" || {
+  printf 'FAIL: pre-existing sudoers hermes was removed after rollback\n' >&2
   exit 1
 }
-! _file_exists "$SYSTEMLIMITS_CONF" || {
-  printf 'FAIL: systemd limits not removed after rollback\n' >&2
+_file_exists "$SYSTEMLIMITS_CONF" || {
+  printf 'FAIL: pre-existing systemd limits were removed after rollback\n' >&2
   exit 1
 }
-! _file_exists "$USER_OVERRIDE" || {
-  printf 'FAIL: user override not removed after rollback\n' >&2
+_file_exists "$USER_OVERRIDE" || {
+  printf 'FAIL: pre-existing user override was removed after rollback\n' >&2
   exit 1
 }
 _user_in_group "systemd-journal" || {

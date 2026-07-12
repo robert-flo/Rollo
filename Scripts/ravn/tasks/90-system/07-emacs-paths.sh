@@ -40,6 +40,7 @@ readonly EMACS_DIRECTORIES=(
   "${HOME}/.config/age"
   "${HOME}/.config/scripts"
 )
+EMACS_CREATED_FILES=()
 
 _path_exists() {
   [[ -e $1 ]]
@@ -65,6 +66,7 @@ admin_apply() {
     if ! _path_exists "$org_file"; then
       mkdir -p "$(dirname "$org_file")"
       : > "$org_file"
+      EMACS_CREATED_FILES+=("$org_file")
     fi
   done
 
@@ -79,7 +81,7 @@ admin_verify() {
   for dir in "${EMACS_DIRECTORIES[@]}"; do
     _path_exists "$dir" || return 1
   done
-  for org_file in "${EMACS_ORG_FILES[@]}"; do
+  for org_file in "${EMACS_CREATED_FILES[@]}"; do
     _path_exists "$org_file" || return 1
   done
   [[ -s ${HOME}/org/bookmarks.org ]] || return 1
@@ -105,7 +107,7 @@ admin_reset() {
 }
 
 admin_verify_reset() {
-  for org_file in "${EMACS_ORG_FILES[@]}"; do
+  for org_file in "${EMACS_CREATED_FILES[@]}"; do
     _path_exists "$org_file" && return 1
   done
   return 0
