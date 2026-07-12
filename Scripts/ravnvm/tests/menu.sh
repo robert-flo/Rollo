@@ -105,5 +105,22 @@ assert_contains "$ssh_menu_output" "Connect to VM via SSH"
 
 make_output=$(make -s DRY_RUN=1 dev-vm REF=dev)
 assert_contains "$make_output" "ravnvm.sh dev"
+make_persist_output=$(make -s DRY_RUN=1 dev-vm-persist REF=dev)
+assert_contains "$make_persist_output" "ravnvm.sh --persist dev"
+make_setup_output=$(make -s DRY_RUN=1 dev-vm-setup)
+assert_contains "$make_setup_output" "ravnvm.sh --check-deps"
+assert_contains "$make_setup_output" "ravnvm.sh --install-deps"
+
+rm -f "$FAKE_BIN/qemu-system-x86_64" "$FAKE_BIN/qemu-img"
+for command_name in env bash realpath dirname clear awk df du find sed basename mktemp mkdir rm grep cat git curl python3; do
+    ln -sf "$(command -v "$command_name")" "$FAKE_BIN/$command_name"
+done
+ln -sf "$FAKE_BIN/python3" "$FAKE_BIN/python"
+recovery_output=$(PATH="$FAKE_BIN" printf 'q\n' | PATH="$FAKE_BIN" "$RAVNVM_SCRIPT")
+assert_contains "$recovery_output" "Required dependencies missing"
+assert_contains "$recovery_output" "Install dependencies"
+if grep -Fq "Choose an action" <<< "$recovery_output"; then
+    fail "dependency recovery opened the normal menu"
+fi
 
 printf 'PASS: RavnVM interaction surfaces\n'

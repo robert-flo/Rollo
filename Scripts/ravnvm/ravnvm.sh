@@ -31,6 +31,13 @@ fi
 
 set -e
 
+function handle_interrupt() {
+  print_warn "RavnVM interrupted; exiting safely"
+  exit 130
+}
+
+trap handle_interrupt INT
+
 # ┌──────────────────────────────────────────────────────────────────────────────┐
 # │ Configuration                                                                │
 # └──────────────────────────────────────────────────────────────────────────────┘
