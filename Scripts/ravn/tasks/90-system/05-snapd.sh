@@ -104,7 +104,7 @@ admin_reset() {
   if _systemctl_enabled "$APPARMOR_SERVICE"; then
     _run_as_root systemctl disable --now "$APPARMOR_SERVICE" || true
   fi
-  if [[ -L $SNAP_LINK ]]; then
+  if _symlink_correct; then
     _run_as_root rm -f "$SNAP_LINK" || true
   fi
   return 0
@@ -113,7 +113,7 @@ admin_reset() {
 admin_verify_reset() {
   ! _systemctl_enabled "$APPARMOR_SERVICE" || return 1
   ! _systemctl_enabled "$SNAPD_SOCKET" || return 1
-  [[ ! -L $SNAP_LINK ]] || return 1
+  ! _symlink_correct || return 1
   return 0
 }
 
