@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ─── RaVN Framework — Generic mise-managed npm CLI backend ──────────────────
+# ─── RaVN Framework — Generic mise-managed CLI backend ─────────────────────
 
 mise_cli_task() {
   local task_name="${CLI_COMMAND//[^a-zA-Z0-9_-]/-}"
@@ -18,12 +18,17 @@ mise_cli_task() {
   # shellcheck disable=SC2034
   TEST_LEVEL="isolated"
   # shellcheck disable=SC2034
-  DEPENDS=("mise" "node")
+  if [[ ${CLI_MISE_TOOL:-npm:} == npm:* ]]; then
+    DEPENDS=("mise" "node")
+  else
+    DEPENDS=("mise")
+  fi
   # shellcheck disable=SC2034
   INTERACTIVE=false
 
-  MISE_CLI_PACKAGE="$CLI_PACKAGE"
+  MISE_CLI_PACKAGE="${CLI_PACKAGE:-}"
   MISE_CLI_COMMAND="$CLI_COMMAND"
+  MISE_CLI_TOOL="${CLI_MISE_TOOL:-npm:${CLI_PACKAGE:-}}"
   MISE_CLI_VERSION="${CLI_VERSION:-latest}"
   MISE_CLI_NODE_VERSION="${CLI_NODE_VERSION:-latest}"
   MISE_CLI_VERIFY_ARGS=("${CLI_VERIFY_ARGS:---version}")
@@ -50,6 +55,13 @@ mise_cli_write_config() {
   local config_dir="$1"
 
   mkdir -p "$config_dir" || return 1
+  if [[ $MISE_CLI_TOOL != npm:* ]]; then
+    cat >"${config_dir}/mise.toml" <<EOF
+[tools]
+"${MISE_CLI_TOOL}" = "${MISE_CLI_VERSION}"
+EOF
+    return 0
+  fi
   cat >"${config_dir}/mise.toml" <<EOF
 [tools]
 node = "${MISE_CLI_NODE_VERSION}"
@@ -68,8 +80,10 @@ mise_cli_record_versions() {
   local node_version=""
 
   command_version=$("$mise_bin" exec --cd "$config_dir" -- "$MISE_CLI_COMMAND" "${MISE_CLI_VERIFY_ARGS[@]}") || return 1
-  node_version=$("$mise_bin" exec --cd "$config_dir" -- node --version) || return 1
-  [[ -n $command_version && -n $node_version ]] || return 1
+  if [[ $MISE_CLI_TOOL == npm:* ]]; then
+    node_version=$("$mise_bin" exec --cd "$config_dir" -- node --version) || return 1
+  fi
+  [[ -n $command_version ]] || return 1
 
   # shellcheck disable=SC2034
   RAVN_EVIDENCE_REQUESTED_VERSION="$MISE_CLI_VERSION"
@@ -99,7 +113,11 @@ mise_cli_install_config() {
   mise_cli_write_config "$config_dir" || return 1
   "$mise_bin" --cd "$config_dir" install --yes || return 1
 
-  install_root=$("$mise_bin" where "npm:${MISE_CLI_PACKAGE}@${MISE_CLI_VERSION}") || return 1
+  if [[ $MISE_CLI_TOOL != npm:* ]]; then
+    mise_cli_record_versions "$mise_bin" "$config_dir"
+    return $?
+  fi
+  install_root=$("$mise_bin" where "${MISE_CLI_TOOL}@${MISE_CLI_VERSION}") || return 1
   package_version=$("$mise_bin" exec --cd "$config_dir" -- node -p \
     "require('${install_root}/lib/node_modules/${MISE_CLI_PACKAGE}/package.json').version") || return 1
   [[ -n $package_version ]] || return 1
@@ -144,6 +162,17 @@ check_updates() {
   verify || return 1
   mise_bin=$(mise_cli_bin) || return 1
   current_version="$RAVN_EVIDENCE_RESOLVED_VERSION"
+  if [[ $MISE_CLI_TOOL != npm:* ]]; then
+    latest_version=$("$mise_bin" outdated --cd "$MISE_CLI_CONFIG_DIR" --local --no-header 2>&1) || return 1
+    RAVN_UPDATE_AVAILABLE=false
+    if [[ -n $latest_version && $latest_version != *"up to date"* ]]; then
+      RAVN_UPDATE_AVAILABLE=true
+      printf '%s\n' "$latest_version"
+    else
+      printf '%s is up to date: %s\n' "$MISE_CLI_COMMAND" "$current_version"
+    fi
+    return 0
+  fi
   latest_version=$("$mise_bin" exec --cd "$MISE_CLI_CONFIG_DIR" -- npm view "$MISE_CLI_PACKAGE" version) || return 1
   # shellcheck disable=SC2034
   RAVN_UPDATE_AVAILABLE=false
