@@ -853,11 +853,11 @@ run_test() {
 show_menu() {
   echo ""
   print_section "${RAVN_ICON[ui_command]} Choose an action"
-  echo -e "  ${RAVN_ICON[ui_check]} ${GREEN}1${NC}  Verify current configuration"
-  echo -e "  ${RAVN_ICON[ui_gear]} ${GREEN}2${NC}  Run full setup"
-  echo -e "  ${RAVN_ICON[ui_test]} ${GREEN}3${NC}  Run integration test"
-  echo -e "  ${RAVN_ICON[ui_trash]} ${GREEN}4${NC}  Clean local config (fresh start)"
-  echo -e "  ${RAVN_ICON[ui_close]} ${GREEN}q${NC}  Exit"
+  echo -e "  ${GREEN}1${NC}  ${RAVN_ICON[ui_check]}  Verify current configuration"
+  echo -e "  ${GREEN}2${NC}  ${RAVN_ICON[ui_gear]}  Run full setup"
+  echo -e "  ${GREEN}3${NC}  ${RAVN_ICON[ui_test]}  Run integration test"
+  echo -e "  ${GREEN}4${NC}  ${RAVN_ICON[ui_trash]}  Clean local config (fresh start)"
+  echo -e "  ${GREEN}q${NC}  ${RAVN_ICON[ui_close]}  Exit"
   echo ""
   echo -ne "  ${LIGHT_GRAY}Selection:${NC} "
 }
