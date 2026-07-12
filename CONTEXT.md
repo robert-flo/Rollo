@@ -68,6 +68,14 @@ _Avoid_: cleanup, cache clearing, generic uninstall
 The task-specific mechanism used to install and manage a tool, such as pacman, npm, mise, Homebrew, Flatpak, or an upstream installer.
 _Avoid_: framework-wide package manager
 
+**Upstream installer backend**:
+The shared task backend for tools installed by a vendor-provided remote installer rather than a package manager, with explicit download, execution, verification, and evidence boundaries.
+_Avoid_: curl task, remote script, generic installer
+
+**User-level installation**:
+An installation whose files, executable, configuration, and reset scope belong to one user under user-owned directories rather than system-wide locations.
+_Avoid_: global installation, system install
+
 **Task menu**:
 The interactive entrypoint for inspecting, selecting, executing, testing, and resetting tasks; it is an orchestration surface, not an installable task.
 _Avoid_: task module, baseline installer
