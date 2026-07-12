@@ -65,11 +65,10 @@ EOF
   cat >"${config_dir}/mise.toml" <<EOF
 [tools]
 node = "${MISE_CLI_NODE_VERSION}"
-"npm:${MISE_CLI_PACKAGE}" = {
-  version = "${MISE_CLI_VERSION}",
-  allow_builds = true,
-  npm_args = "--ignore-scripts=false",
-}
+"npm:${MISE_CLI_PACKAGE}" = "${MISE_CLI_VERSION}"
+EOF
+  cat >"${config_dir}/.npmrc" <<'EOF'
+allow-scripts=true
 EOF
 }
 
