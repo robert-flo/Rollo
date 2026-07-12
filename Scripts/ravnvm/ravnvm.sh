@@ -592,19 +592,84 @@ function show_menu() {
   read -r -p "Selection: " MENU_CHOICE
 }
 
+function get_current_branch() {
+  local current_branch=""
+
+  current_branch=$(git branch --show-current 2> /dev/null || true)
+  printf '%s\n' "$current_branch"
+}
+
+function select_revision() {
+  local current_branch=""
+  local revision_choice=""
+  local selected_revision=""
+
+  SELECTED_REVISION=""
+
+  current_branch=$(get_current_branch)
+
+  print_section "Choose a RaVN revision"
+  echo "  1  master"
+  echo "  2  dev"
+  if [[ -n $current_branch && $current_branch != "master" && $current_branch != "dev" ]]; then
+    echo "  3  $current_branch (current branch)"
+  else
+    echo "  3  Current branch"
+  fi
+  echo "  4  Other branch or commit"
+  echo "  q  Back"
+  echo ""
+  read -r -p "Revision: " revision_choice
+
+  case "$revision_choice" in
+  1)
+    selected_revision="master"
+    ;;
+  2)
+    selected_revision="dev"
+    ;;
+  3)
+    if [[ -n $current_branch ]]; then
+      selected_revision="$current_branch"
+    else
+      echo "No current branch detected; using master."
+      selected_revision="master"
+    fi
+    ;;
+  4)
+    read -r -p "Branch or commit: " selected_revision
+    if [[ -z $selected_revision ]]; then
+      echo "A branch or commit is required."
+      return 1
+    fi
+    ;;
+  q | Q)
+    return 1
+    ;;
+  *)
+    echo "Invalid revision option: $revision_choice"
+    return 1
+    ;;
+  esac
+
+  SELECTED_REVISION="$selected_revision"
+}
+
 function run_vm_command() {
-  local persistent_mode="${1:-false}"
+  local revision="${1:-master}"
+  local persistent_mode="${2:-false}"
 
   if ! check_dependencies; then
     return 1
   fi
 
   download_archbox
-  run_vm "master" "$persistent_mode"
+  run_vm "$revision" "$persistent_mode"
 }
 
 function run_interactive_menu() {
   local choice=""
+  local selected_revision=""
 
   while true; do
     show_menu
@@ -612,11 +677,19 @@ function run_interactive_menu() {
 
     case "$choice" in
     1)
-      run_vm_command false || true
+      select_revision || true
+      selected_revision="$SELECTED_REVISION"
+      if [[ -n $selected_revision ]]; then
+        run_vm_command "$selected_revision" false || true
+      fi
       press_enter_to_continue
       ;;
     2)
-      run_vm_command true || true
+      select_revision || true
+      selected_revision="$SELECTED_REVISION"
+      if [[ -n $selected_revision ]]; then
+        run_vm_command "$selected_revision" true || true
+      fi
       press_enter_to_continue
       ;;
     3)
