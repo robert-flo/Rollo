@@ -577,6 +577,98 @@ function press_enter_to_continue() {
   read -r -p "Press Enter to continue..." _
 }
 
+function format_bytes() {
+  local bytes="${1:-0}"
+
+  awk -v bytes="$bytes" 'BEGIN {
+    split("B KiB MiB GiB TiB", units)
+    unit = 1
+    unit_index = 1
+    while (bytes >= 1024 && unit_index < 5) {
+      bytes /= 1024
+      unit++
+      unit_index++
+    }
+    printf "%.2f %s", bytes, units[unit_index]
+  }'
+}
+
+function show_storage_status() {
+  local cache_bytes="0"
+  local filesystem_total="0"
+  local filesystem_used="0"
+  local filesystem_available="0"
+  local filesystem_percent="0"
+
+  cache_bytes=$(du -s -B1 "$CACHE_DIR" 2> /dev/null | awk '{print $1}' || echo "0")
+  read -r filesystem_total filesystem_used filesystem_available filesystem_percent < <(
+    df -P -B1 "$CACHE_DIR" 2> /dev/null | awk 'NR == 2 {
+      gsub("%", "", $5)
+      print $2, $3, $4, $5
+    }'
+  ) || true
+
+  print_section "Storage"
+  print_info "VM cache: $(format_bytes "$cache_bytes")"
+  print_info "Disk: $(format_bytes "$filesystem_used") used / $(format_bytes "$filesystem_total") (${filesystem_percent}%)"
+  print_info "Free: $(format_bytes "$filesystem_available")"
+
+  if ((filesystem_percent >= 90)); then
+    print_error "Storage critically low; clean old VM snapshots before continuing"
+  elif ((filesystem_percent >= 80)); then
+    print_warn "Storage usage is high; review VM snapshots before creating another"
+  else
+    print_success "Storage available"
+  fi
+}
+
+function validate_command() {
+  local command_name="$1"
+
+  if command_exists "$command_name"; then
+    print_success "$command_name"
+    return 0
+  fi
+
+  print_error "$command_name not found"
+  return 1
+}
+
+function validate_environment() {
+  local command_name=""
+  local validation_failed=0
+
+  print_section "Validating Environment"
+  for command_name in qemu-system-x86_64 qemu-img curl git; do
+    if ! validate_command "$command_name"; then
+      validation_failed=1
+    fi
+  done
+
+  if command_exists python3 || command_exists python; then
+    print_success "python"
+  else
+    print_error "python not found"
+    validation_failed=1
+  fi
+
+  if [[ -d "$CACHE_DIR" && -w "$CACHE_DIR" ]]; then
+    print_success "RavnVM cache directory"
+  else
+    print_error "RavnVM cache directory is not writable"
+    validation_failed=1
+  fi
+
+  if [[ -r /dev/kvm ]]; then
+    print_success "KVM acceleration"
+  else
+    print_warn "KVM unavailable; QEMU will run without hardware acceleration"
+  fi
+
+  show_storage_status
+  return "$validation_failed"
+}
+
 function show_menu() {
   clear || true
   print_header "RavnVM — Development VM"
@@ -724,6 +816,10 @@ function run_interactive_menu() {
 check_root
 
 if [[ $# -eq 0 ]]; then
+    if ! validate_environment; then
+        print_error "Environment validation failed; RavnVM will not open the menu"
+        exit 1
+    fi
     run_interactive_menu
     exit 0
 fi
