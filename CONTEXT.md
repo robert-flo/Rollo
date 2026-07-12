@@ -83,3 +83,148 @@ _Avoid_: task module, baseline installer
 **Baseline mode**:
 The explicit non-interactive execution mode used by the dotfiles installer to run only baseline tasks.
 _Avoid_: interactive setup, full setup
+
+## Administrative Task Execution
+
+**Suite**:
+The single RaVN execution surface responsible for installing user tools,
+system packages, and host configuration.
+_Avoid_: installer, package manager, dotfiles script
+
+**Task**:
+An independently executable unit of desired system state with declared
+ownership, dependencies, permissions, and observable verification.
+_Avoid_: script, step, command
+
+**Execution profile**:
+A task's declared operational boundary, such as user-tool, system-package,
+system-config, service, network-security, or privileged orchestration.
+_Avoid_: task type, category
+
+**Postcondition**:
+An observable fact that must be true after a task succeeds; task success is not
+accepted from process exit status alone.
+_Avoid_: success message, install result
+
+**Privileged task**:
+A task that requires elevated authority to inspect or change system-owned
+resources.
+_Avoid_: sudo task, root script
+
+**Ownership boundary**:
+The explicit set of files, packages, services, accounts, rules, or other
+resources a task may create, modify, preserve, or remove.
+_Avoid_: scope, side effects
+
+**Plan**:
+A read-only description of the tasks, dependencies, permissions, resources,
+and postconditions that an execution would attempt.
+_Avoid_: dry-run output, preview log
+
+**Apply**:
+The authorized phase that executes a previously reviewed plan and records its
+outcomes.
+_Avoid_: install, run
+
+**Verification**:
+The explicit observation of a task's postconditions after execution.
+_Avoid_: exit-code check, success message
+
+**VM adapter**:
+A future test adapter that runs tasks or complete revisions inside a virtual
+machine; it is outside the current suite-scope design increment.
+_Avoid_: Docker replacement, VM mode
+
+**Activation boundary**:
+The event or action required before an applied change becomes effective, such
+as a reboot, new login session, daemon reload, or network reconnection.
+_Avoid_: side effect, delayed success
+
+**Pending activation**:
+The state where a task's changes were applied and recorded, but its effective
+postconditions cannot be confirmed until the activation boundary is crossed.
+_Avoid_: partial failure, success anyway
+
+**Reconciliation report**:
+The user-facing summary of what a task attempted, what was verified, what was
+not achieved, and what action remains necessary.
+_Avoid_: install log, terminal output
+
+**Applied-pending-activation**:
+A normalized task outcome meaning the declared changes were applied, but an
+activation boundary must be crossed before all effective postconditions can be
+verified.
+_Avoid_: verified, failed
+
+**Partially-verified**:
+A normalized task outcome meaning some declared postconditions are true while
+others remain false, unknown, or blocked by the environment.
+_Avoid_: success, warning only
+
+**Reversibility policy**:
+The declared recovery capability of a task: reversible, compensatable,
+irreversible, or none.
+_Avoid_: rollback guarantee, undo support
+
+**Resource ownership**:
+The authority a task has over a declared system resource and the boundary that
+prevents unrelated tasks from silently overwriting it.
+_Avoid_: file list, side effects
+
+**Resource conflict**:
+An incompatible claim by two tasks over the same system resource or state
+boundary, requiring explicit coordination before apply.
+_Avoid_: duplicate task, ordering issue
+
+**Reference task**:
+The first fully validated canonical task for an execution profile, whose
+contract and tests become the template for later migrations in that profile.
+_Avoid_: generic template, example script
+
+**Managed section**:
+A bounded portion of a shared resource that a task owns while preserving
+unmanaged content around it.
+_Avoid_: managed file, whole-file ownership
+
+**Reference contract**:
+The complete set of permissions, ownership rules, postconditions, evidence,
+activation behavior, and recovery guarantees demonstrated by a reference task.
+_Avoid_: implementation template, helper function
+
+**Effective configuration**:
+The behavior a system parser or service resolves from the combined resource,
+not merely the text a task wrote to disk.
+_Avoid_: file contents, desired text
+
+**Administrative test harness**:
+The test runner and fixtures that validate administrative tasks, their resource
+ownership, postconditions, activation boundaries, and reconciliation outcomes.
+_Avoid_: package test, generic test runner
+
+**Testability contract**:
+The minimum task metadata and executable checks required for a task to produce
+reproducible evidence; a task is incomplete without it.
+_Avoid_: test script, smoke test
+
+**Administrative task contract**:
+The shared declaration and lifecycle hooks that define a task's profile,
+permissions, ownership, desired changes, postconditions, evidence, activation
+boundary, and recovery behavior.
+_Avoid_: legacy task shape, install script
+
+**Read-only plan**:
+A plan phase that may inspect and calculate changes but cannot mutate resources,
+install packages, restart services, or alter permissions.
+_Avoid_: dry-run apply, simulated install
+
+**Capability**:
+An explicitly declared authority to perform a class of mutation, such as
+writing a managed section, installing a package, managing a service, or using
+privileged system commands.
+_Avoid_: permission, sudo access
+
+**Fail-closed batch**:
+A batch execution policy that stops dependent work after a privileged failure,
+preserves the failure in the global result, and requires explicit authorization
+to continue with independent tasks.
+_Avoid_: best-effort install, ignore errors
