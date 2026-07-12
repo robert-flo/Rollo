@@ -41,12 +41,22 @@ cat > "$fake_bin/tee" << 'EOF'
 #!/usr/bin/env bash
 target="${RAVN_AI_FILES_DIR:?}/$(basename "${!#}")"
 mkdir -p "$(dirname "$target")"
-cat >> "$target"
+cat > "$target"
 EOF
 
 cat > "$fake_bin/chmod" << 'EOF'
 #!/usr/bin/env bash
 :
+EOF
+
+cat > "$fake_bin/systemctl" << 'EOF'
+#!/usr/bin/env bash
+[[ ${1:-} == daemon-reload ]]
+EOF
+
+cat > "$fake_bin/visudo" << 'EOF'
+#!/usr/bin/env bash
+[[ ${RAVN_AI_VISUDO_SCENARIO:-valid} != invalid ]]
 EOF
 
 cat > "$fake_bin/rm" << 'EOF'
@@ -72,6 +82,13 @@ source "$RAVN_TASK"
 
 _file_exists() {
   [[ -f $state_files/$(basename "$1") ]]
+}
+
+_file_contains() {
+  local file="$1"
+  local expected="$2"
+  [[ -f $state_files/$(basename "$file") ]] &&
+    grep -qF "$expected" "$state_files/$(basename "$file")"
 }
 
 _user_in_group() {

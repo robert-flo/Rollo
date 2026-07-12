@@ -41,12 +41,22 @@ cat > "$fake_bin/tee" << 'EOF'
 # Write stdin to the test files directory, preserving the basename
 target="${RAVN_AI_FILES_DIR:?}/$(basename "${!#}")"
 mkdir -p "$(dirname "$target")"
-cat >> "$target"
+cat > "$target"
 EOF
 
 cat > "$fake_bin/chmod" << 'EOF'
 #!/usr/bin/env bash
 :
+EOF
+
+cat > "$fake_bin/systemctl" << 'EOF'
+#!/usr/bin/env bash
+[[ ${1:-} == daemon-reload ]]
+EOF
+
+cat > "$fake_bin/visudo" << 'EOF'
+#!/usr/bin/env bash
+[[ ${RAVN_AI_VISUDO_SCENARIO:-valid} != invalid ]]
 EOF
 
 cat > "$fake_bin/rm" << 'EOF'
@@ -72,9 +82,22 @@ _file_exists() {
   [[ -f $state_files/$(basename "$1") ]]
 }
 
+_file_contains() {
+  local file="$1"
+  local expected="$2"
+  [[ -f $state_files/$(basename "$file") ]] &&
+    grep -qF "$expected" "$state_files/$(basename "$file")"
+}
+
 _user_in_group() {
   grep -qw "$1" "$state_groups" || false
 }
+
+printf 'invalid\n' > "$state_files/99-ai-tools"
+printf 'invalid\n' > "$state_files/hermes-nopasswd"
+printf 'invalid\n' > "$state_files/99-wheel-nopasswd.rules"
+printf 'invalid\n' > "$state_files/99-limits.conf"
+printf 'invalid\n' > "$state_files/override.conf"
 
 # ─── Happy path ──────────────────────────────────────────────────────────────
 admin_plan
