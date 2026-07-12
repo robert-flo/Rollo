@@ -105,7 +105,7 @@ _runner_record() {
   local state=""
 
   TASK_RESULTS+=("${name}:${result}")
-  if [[ $result == "failed" || $result == "unverified" || $result == "dependency-missing" ]]; then
+  if [[ $result == "failed" || $result == "unverified" || $result == "dependency-missing" || $result == "unsupported" ]]; then
     TASK_FAILURES+=("$name")
   fi
 
@@ -119,6 +119,7 @@ _runner_record() {
   dependency-missing) state="dependency-missing" ;;
   update-failed) state="update-failed" ;;
   rollback-failed) state="rollback-failed" ;;
+  unsupported) state="unsupported" ;;
   *) return 0 ;;
   esac
 
@@ -254,7 +255,11 @@ check_updates_selected_task() {
   if ! check_updates >>"$log" 2>&1; then
     _runner_redact_log "$log"
     error_msg "${name}: No se pudo consultar actualizaciones. Log: ${log}"
-    _runner_record "$name" "failed" 1
+    if [[ ${RAVN_UPDATE_RESULT:-} == "unsupported" ]]; then
+      _runner_record "$name" "unsupported" 1
+    else
+      _runner_record "$name" "failed" 1
+    fi
     return 1
   fi
 
@@ -307,6 +312,8 @@ update_selected_task() {
   _runner_redact_log "$log"
   if [[ ${RAVN_UPDATE_RESULT:-} == "rollback-failed" ]]; then
     result="rollback-failed"
+  elif [[ ${RAVN_UPDATE_RESULT:-} == "unsupported" ]]; then
+    result="unsupported"
   fi
   error_msg "${name}: Actualización falló (${result}). Log: ${log}"
   _runner_record "$name" "$result" 1
