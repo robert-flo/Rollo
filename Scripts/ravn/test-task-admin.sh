@@ -108,7 +108,7 @@ cat > "$report_file" << EOF
   "task": "${ADMIN_TASK_ID}",
   "family": "${ADMIN_TASK_FAMILY}",
   "profile": "${ADMIN_EXECUTION_PROFILE}",
-  "mode": "isolated",
+  "mode": "${RAVN_ADMIN_EXECUTION_MODE:-isolated}",
   "approved": true,
   "scenario": "${scenario}",
   "apply": "${apply_status}",
