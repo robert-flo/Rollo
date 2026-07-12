@@ -165,6 +165,24 @@ bash Scripts/ravn/test-task-admin.sh admin-lifecycle --approve
 bash Scripts/ravn/test-task-admin-batch.sh admin-batch --approve
 ```
 
+Administrative evidence has three distinct levels:
+
+| Level | Environment | Proves | Does not prove |
+|---|---|---|---|
+| Isolated | Temporary HOME on the host | Fixture lifecycle and result classification | Container or host isolation |
+| Docker | Clean container with selected mounts | Reproducible lifecycle behavior and container isolation | Host configuration behavior |
+| Host | Real HOME with explicit authorization | Backup, reconciliation, and host postconditions | Safety of an unreviewed invocation |
+
+Run the Docker fixture harness after the isolated checks:
+
+```bash
+bash Scripts/ravn/test-task-admin-docker.sh admin-lifecycle --approve
+```
+
+Docker reports are stored separately from isolated and host reports. A Docker
+result must never be described as host validation. If Docker is unavailable,
+the harness prints `SKIP` and does not claim verification.
+
 Isolated mode is the default and replaces `HOME` with a temporary directory.
 It must cover read-only planning, explicit approval, apply, verification,
 reset/reinstall, failure, partial verification, pending activation, and
