@@ -38,9 +38,9 @@ assert_contains "$menu_output" "Goodbye!"
 invalid_output=$(printf 'x\n\nq\n' | "$RAVNVM_SCRIPT")
 assert_contains "$invalid_output" "Invalid option: x"
 
-revision_output=$(printf '1\nq\n\nq\n' | "$RAVNVM_SCRIPT")
-assert_contains "$revision_output" "Choose a RaVN revision"
-assert_contains "$revision_output" "Other branch or commit"
+revision_output=$(printf '1\nq\nq\n' | "$RAVNVM_SCRIPT")
+assert_contains "$revision_output" "Choose VM mode"
+assert_contains "$revision_output" "Ephemeral"
 
 help_output=$("$RAVNVM_SCRIPT" --help)
 assert_contains "$help_output" "Usage: ravnvm"
