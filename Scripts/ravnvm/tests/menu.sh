@@ -78,6 +78,19 @@ storage_menu_output=$(printf '5\n\nq\n' | "$RAVNVM_SCRIPT")
 assert_contains "$storage_menu_output" "Storage"
 assert_contains "$storage_menu_output" "VM cache:"
 
+resource_defaults_output=$(printf '8\n\n\n\n\nq\n' | "$RAVNVM_SCRIPT")
+assert_contains "$resource_defaults_output" "Configure VM resources"
+assert_contains "$resource_defaults_output" "Session resources: 4G RAM, 2 CPUs"
+
+resource_values_output=$(printf '8\n8G\n4\n\n\nq\n' | "$RAVNVM_SCRIPT")
+assert_contains "$resource_values_output" "Session resources: 8G RAM, 4 CPUs"
+
+resource_invalid_output=$(printf '8\n8G\n0\n\n\nq\n' | "$RAVNVM_SCRIPT")
+assert_contains "$resource_invalid_output" "CPU count must be a positive integer"
+if grep -Fq "Session resources: 8G RAM, 0 CPUs" <<< "$resource_invalid_output"; then
+    fail "invalid CPU count was accepted"
+fi
+
 make_output=$(make -s DRY_RUN=1 dev-vm REF=dev)
 assert_contains "$make_output" "ravnvm.sh dev"
 
