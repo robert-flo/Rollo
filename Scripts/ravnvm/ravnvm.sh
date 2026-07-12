@@ -92,8 +92,8 @@ function print_usage() {
     echo "  --help                  Show this help"
     echo ""
     echo "Environment Variables:"
-    echo "  VM_MEMORY=8G            Set VM memory (default: 4G)"
-    echo "  VM_CPUS=4               Set VM CPU count (default: 2)"
+    echo "  VM_MEMORY=4G            Set VM memory (default: 4G)"
+    echo "  VM_CPUS=2               Set VM CPU count (default: 2)"
     echo "  VM_EXTRA_ARGS=\"args\"     Add extra QEMU arguments"
     echo "  VM_QEMU_OVERRIDE=\"cmd\"   Override entire QEMU command (\$VM_DISK substituted)"
     echo ""
@@ -771,12 +771,14 @@ function show_menu() {
   clear || true
   print_ravnvm_banner
   print_section "${ICON_UI_COMMAND} Choose an action"
-  echo -e "  ${GREEN}1${NC}  ${ICON_UI_PLAY}  Run master branch"
-  echo -e "  ${GREEN}2${NC}  ${ICON_UI_SAVE}  Run master branch with persistence"
-  echo -e "  ${GREEN}3${NC}  ${ICON_UI_LIST}  List cached snapshots"
-  echo -e "  ${GREEN}4${NC}  ${ICON_UI_TRASH}  Clean VM cache"
-  echo -e "  ${GREEN}5${NC}  ${ICON_UI_TEST}  Check dependencies"
-  echo -e "  ${GREEN}6${NC}  ${ICON_UI_PACKAGE}  Install dependencies"
+  echo -e "  ${GREEN}1${NC}  ${ICON_GIT_BRANCH}  Run master branch"
+  echo -e "  ${GREEN}2${NC}  ${ICON_GIT_BRANCH}  Run dev branch"
+  echo -e "  ${GREEN}3${NC}  ${ICON_GIT_BRANCH}  Run current branch"
+  echo -e "  ${GREEN}4${NC}  ${ICON_UI_SEARCH}  Run other branch or commit"
+  echo -e "  ${GREEN}5${NC}  ${ICON_UI_STORAGE}  Show VM storage usage"
+  echo -e "  ${GREEN}6${NC}  ${ICON_UI_TRASH}  Clean VM cache"
+  echo -e "  ${GREEN}7${NC}  ${ICON_UI_LIST}  List VM snapshots"
+  echo -e "  ${GREEN}8${NC}  ${ICON_UI_GEAR}  Configure RAM and CPU"
   echo -e "  ${GREEN}q${NC}  ${ICON_UI_CLOSE}  Exit"
   echo ""
   read -r -p "${LIGHT_GRAY}Selection:${NC} " MENU_CHOICE
@@ -789,60 +791,82 @@ function get_current_branch() {
   printf '%s\n' "$current_branch"
 }
 
-function select_revision() {
-  local current_branch=""
-  local revision_choice=""
-  local selected_revision=""
+function select_execution_mode() {
+  local mode_choice=""
 
-  SELECTED_REVISION=""
+  SELECTED_PERSISTENCE=""
 
-  current_branch=$(get_current_branch)
-
-  print_section "${ICON_GIT_BRANCH} Choose a RaVN revision"
-  echo -e "  ${GREEN}1${NC}  ${ICON_GIT_BRANCH}  master"
-  echo -e "  ${GREEN}2${NC}  ${ICON_GIT_BRANCH}  dev"
-  if [[ -n $current_branch && $current_branch != "master" && $current_branch != "dev" ]]; then
-    echo -e "  ${GREEN}3${NC}  ${ICON_GIT_BRANCH}  $current_branch (current branch)"
-  else
-    echo -e "  ${GREEN}3${NC}  ${ICON_GIT_BRANCH}  Current branch"
-  fi
-  echo -e "  ${GREEN}4${NC}  ${ICON_UI_SEARCH}  Other branch or commit"
+  print_section "${ICON_UI_PLAY} Choose VM mode"
+  echo -e "  ${GREEN}1${NC}  ${ICON_UI_PLAY}  Ephemeral"
+  echo -e "  ${GREEN}2${NC}  ${ICON_UI_SAVE}  Persistent"
   echo -e "  ${GREEN}q${NC}  ${ICON_UI_ARROW_LEFT}  Back"
   echo ""
-  read -r -p "Revision: " revision_choice
+  read -r -p "${LIGHT_GRAY}Selection:${NC} " mode_choice
 
-  case "$revision_choice" in
+  case "$mode_choice" in
     1)
-      selected_revision="master"
+      SELECTED_PERSISTENCE="false"
       ;;
     2)
-      selected_revision="dev"
-      ;;
-    3)
-      if [[ -n $current_branch ]]; then
-        selected_revision="$current_branch"
-      else
-        echo "No current branch detected; using master."
-        selected_revision="master"
-      fi
-      ;;
-    4)
-      read -r -p "Branch or commit: " selected_revision
-      if [[ -z $selected_revision ]]; then
-        echo "A branch or commit is required."
-        return 1
-      fi
+      SELECTED_PERSISTENCE="true"
       ;;
     q | Q)
       return 1
       ;;
     *)
-      echo "Invalid revision option: $revision_choice"
+      echo "Invalid mode option: $mode_choice"
       return 1
       ;;
   esac
+}
 
-  SELECTED_REVISION="$selected_revision"
+function configure_vm_resources() {
+  local current_memory="${VM_MEMORY:-4G}"
+  local current_cpus="${VM_CPUS:-2}"
+  local requested_memory=""
+  local requested_cpus=""
+
+  print_section "${ICON_UI_GEAR} Configure VM resources"
+  read -r -p "${LIGHT_GRAY}RAM [${current_memory}]:${NC} " requested_memory
+  read -r -p "${LIGHT_GRAY}CPUs [${current_cpus}]:${NC} " requested_cpus
+
+  VM_MEMORY="${requested_memory:-$current_memory}"
+  VM_CPUS="${requested_cpus:-$current_cpus}"
+
+  if ! [[ $VM_CPUS =~ ^[1-9][0-9]*$ ]]; then
+    print_error "CPU count must be a positive integer"
+    VM_CPUS="$current_cpus"
+    press_enter_to_continue
+    return 1
+  fi
+
+  export VM_MEMORY VM_CPUS
+  print_success "Session resources: ${VM_MEMORY} RAM, ${VM_CPUS} CPUs"
+  press_enter_to_continue
+}
+
+function run_selected_revision() {
+  local revision="$1"
+
+  if ! select_execution_mode; then
+    return 0
+  fi
+
+  run_vm_command "$revision" "$SELECTED_PERSISTENCE" || true
+  press_enter_to_continue
+}
+
+function run_custom_revision() {
+  local custom_revision=""
+
+  read -r -p "${LIGHT_GRAY}Branch or commit:${NC} " custom_revision
+  if [[ -z $custom_revision ]]; then
+    print_error "A branch or commit is required"
+    press_enter_to_continue
+    return 1
+  fi
+
+  run_selected_revision "$custom_revision"
 }
 
 function run_vm_command() {
@@ -859,7 +883,7 @@ function run_vm_command() {
 
 function run_interactive_menu() {
   local choice=""
-  local selected_revision=""
+  local current_branch=""
 
   while true; do
     show_menu
@@ -867,35 +891,32 @@ function run_interactive_menu() {
 
     case "$choice" in
       1)
-        select_revision || true
-        selected_revision="$SELECTED_REVISION"
-        if [[ -n $selected_revision ]]; then
-          run_vm_command "$selected_revision" false || true
-        fi
-        press_enter_to_continue
+        run_selected_revision "master"
         ;;
       2)
-        select_revision || true
-        selected_revision="$SELECTED_REVISION"
-        if [[ -n $selected_revision ]]; then
-          run_vm_command "$selected_revision" true || true
-        fi
-        press_enter_to_continue
+        run_selected_revision "dev"
         ;;
       3)
-        list_snapshots || true
-        press_enter_to_continue
+        current_branch=$(get_current_branch)
+        run_selected_revision "${current_branch:-master}"
         ;;
       4)
-        clean_cache || true
-        press_enter_to_continue
+        run_custom_revision || true
         ;;
       5)
-        check_deps_only || true
+        show_storage_status || true
         press_enter_to_continue
         ;;
       6)
-        (install_all_arch_dependencies) || true
+        clean_cache || true
+        press_enter_to_continue
+        ;;
+      7)
+        list_snapshots || true
+        press_enter_to_continue
+        ;;
+      8)
+        configure_vm_resources || true
         press_enter_to_continue
         ;;
       q | Q)
