@@ -577,6 +577,29 @@ function press_enter_to_continue() {
   read -r -p "Press Enter to continue..." _
 }
 
+function print_ravnvm_banner() {
+  echo -e "${CYAN}"
+  cat << 'BANNER_EOF'
+  ╭────────────────────────────────────────────────────╮
+  │                                                    │
+  │  ██████╗  █████╗ ██╗   ██╗███╗   ██╗               │
+  │  ██╔══██╗██╔══██╗██║   ██║████╗  ██║               │
+  │  ██████╔╝███████║██║   ██║██╔██╗ ██║               │
+  │  ██╔══██╗██╔══██║╚██╗ ██╔╝██║╚██╗ ██║              │
+  │  ██║  ██║██║  ██║ ╚████╔╝ ██║ ╚████║               │
+  │  ╚═╝  ╚═╝╚═╝  ╚═╝  ╚═══╝  ╚═╝  ╚═══╝               │
+  │                                                    │
+  │       RavnVM — QEMU/KVM Development Environment   │
+  │                                                    │
+BANNER_EOF
+  echo -e "  │       ${GRAY}by Roberto Flores ${WHITE}@robert-flo${CYAN}          │"
+  cat << 'BANNER_EOF'
+  │                                                    │
+  ╰────────────────────────────────────────────────────╯
+BANNER_EOF
+  echo -e "${NC}"
+}
+
 function format_bytes() {
   local bytes="${1:-0}"
 
@@ -708,7 +731,7 @@ function recover_environment() {
 
 function show_menu() {
   clear || true
-  print_header "${ICON_UI_TERMINAL} RavnVM — Development VM"
+  print_ravnvm_banner
   print_section "${ICON_UI_COMMAND} Choose an action"
   echo "  ${ICON_UI_PLAY} 1  Run master branch"
   echo "  ${ICON_UI_SAVE} 2  Run master branch with persistence"
@@ -854,7 +877,7 @@ check_root
 
 if [[ $# -eq 0 ]]; then
     clear || true
-    print_header "${ICON_UI_TERMINAL} RavnVM — Development VM"
+    print_ravnvm_banner
     if ! recover_environment; then
         print_info "RavnVM closed without starting a VM"
         exit 0
