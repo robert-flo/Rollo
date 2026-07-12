@@ -153,6 +153,48 @@ bash Scripts/ravn/setup.sh
 flg_DryRun=1 bash Scripts/ravn/setup.sh
 ```
 
+## Testing administrative tasks
+
+Administrative tasks are not package installers. Their completion is measured
+by observable postconditions, ownership boundaries, permissions, recovery, and
+reconciliation evidence. Use the isolated harness first:
+
+```bash
+bash Scripts/ravn/test-task-admin.sh admin-lifecycle --approve
+bash Scripts/ravn/test-task-admin-batch.sh admin-batch --approve
+```
+
+Isolated mode is the default and replaces `HOME` with a temporary directory.
+It must cover read-only planning, explicit approval, apply, verification,
+reset/reinstall, failure, partial verification, pending activation, and
+unsupported verification. Administrative batch tests must also cover resource
+conflicts, dependency ordering, rollback, skipped dependents, and explicitly
+authorized independent continuation.
+
+Host mode is a separate, opt-in operation. It must never be inferred from an
+isolated test or from a missing flag:
+
+```bash
+bash Scripts/ravn/test-task-admin-host.sh --host ssh-config \
+  --approve --authorize-host
+```
+
+The host runner performs a read-only preflight, verifies a recoverable backup,
+then applies and verifies the task against the real `HOME`. Host evidence is
+stored separately under `cache/admin-host-reports/`; isolated and Docker
+evidence must not be presented as host validation. If verification fails, the
+report must identify partial state, the backup, the activation boundary, and
+the recovery action. A new SSH connection observes the effective configuration;
+existing sessions are not claimed to have changed.
+
+Every canonical administrative task must provide a dedicated lifecycle test
+and declare identity, execution profile, privilege requirement, dependencies,
+ownership, capabilities, reversibility, activation boundary, postconditions,
+evidence, and test level. The SSH reference task is the approved example.
+Docker is the current isolation boundary. VM execution for privileged or
+host-sensitive scenarios is future work and must not be implied by a passing
+Docker test.
+
 ## Runtime Library
 
 The framework uses `global_fn.sh` for all shared utilities:
