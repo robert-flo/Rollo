@@ -2,17 +2,15 @@
 # 🔬 DEVELOPMENT TOOLS - Package search and analysis
 # ═══════════════════════════════════════════════════════════════
 # 📚 Documentation: docs/src/content/docs/makefile/08-dev.mdx
-# 🎯 Purpose: Host listing, package search, REPL, shell, VM and closure analysis
-# ──── Overview: 7 targets for development and inspection tasks ────
+# 🎯 Purpose: VM development sessions, dependency checks, and storage inspection
+# ──── Overview: 7 targets for development and VM inspection tasks ────
 #
 # 🧪 Dry Run (preview without executing):
-#    make dev-repl       DRY_RUN=1   · skip launching repl
-#    make dev-shell      DRY_RUN=1   · skip entering shell
 #    make dev-vm         DRY_RUN=1   · skip running vm
 #    make dev-vm-persist DRY_RUN=1   · skip running persistent vm
 #    make dev-vm-clean   DRY_RUN=1   · skip cleaning cache
 #    make dev-vm-setup   DRY_RUN=1   · skip setup steps
-#    (dev-hosts, dev-search, dev-search-inst, dev-size, dev-vm-list, dev-vm-size are read-only)
+#    (dev-vm-list and dev-vm-size are read-only)
 #
 # 💡 Usage Examples:
 #    make dev-vm                     · run vm on current active branch
@@ -27,7 +25,7 @@
 #    make dev-vm-setup               · verify and install VM dependencies
 #    make dev-vm-size                · check VM disk usage and free space
 
-.PHONY: dev-hosts dev-search dev-search-inst dev-repl dev-shell dev-vm dev-size dev-vm-persist dev-vm-list dev-vm-clean dev-vm-setup dev-vm-size
+.PHONY: dev-vm dev-vm-persist dev-vm-list dev-vm-clean dev-vm-setup dev-vm-size dev-setup
 
 # ──── Dry Run: make <target> DRY_RUN=1 to preview without executing ─
 DRY_RUN ?= 0
