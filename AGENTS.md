@@ -171,6 +171,15 @@ shfmt -i 2 -sr -kp -ci -d Scripts/
 
 ## Git Worktree Workflow (Development)
 
+### Issue completion cleanup
+
+After an issue is merged successfully into the base branch from which its
+worktree was created, the agent must verify that the issue is closed and then
+ask the user for explicit authorization before removing anything. With that
+authorization, remove the obsolete local and remote topic branch and remove
+the local issue worktree. Do not delete the base branch or its worktree, and do
+not perform cleanup after a failed, partial, or unverified merge.
+
 To protect the user's active system configurations from accidental resets or uncommitted code loss during development, and to maintain task isolation:
 
 > [!NOTE]
