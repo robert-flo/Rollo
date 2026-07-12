@@ -12,6 +12,7 @@ source "${RAVN_DIR}/framework/state.sh"
 
 ravn_state_is_valid verified
 ravn_state_is_valid rollback-failed
+ravn_state_is_valid unsupported
 if ravn_state_is_valid invalid; then
   printf 'FAIL: invalid state accepted\n' >&2
   exit 1

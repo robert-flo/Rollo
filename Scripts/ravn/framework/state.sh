@@ -3,7 +3,7 @@
 
 readonly RAVN_TASK_STATES=(
   absent partial installed verified stale broken dependency-missing
-  update-failed rollback-failed
+  update-failed rollback-failed unsupported
 )
 readonly RAVN_EVIDENCE_MAX_RUNS=30
 readonly RAVN_EVIDENCE_MAX_BYTES=$((50 * 1024 * 1024))
