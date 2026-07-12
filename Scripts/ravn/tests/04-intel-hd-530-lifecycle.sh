@@ -53,6 +53,7 @@ export PATH="$fake_bin:$PATH" RAVN_INTEL_PKGS_STATE="$state"
 # shellcheck disable=SC1090,SC1091
 source "$RAVN_DIR/tasks/90-system/04-intel-hd-530.sh"
 
+# ─── Happy path ──────────────────────────────────────────────────────────────
 admin_plan
 admin_apply
 admin_verify
@@ -65,6 +66,7 @@ admin_verify_reset
 admin_apply
 admin_verify
 
+# ─── Apply failure ───────────────────────────────────────────────────────────
 : > "$state"
 export RAVN_INTEL_SCENARIO=apply-failure
 if admin_apply; then
@@ -72,6 +74,7 @@ if admin_apply; then
   exit 1
 fi
 
+# ─── Conflict removal on apply ──────────────────────────────────────────────
 export RAVN_INTEL_SCENARIO=active
 : > "$state"
 printf '%s\n' intel-compute-runtime intel-graphics-compiler > "$state"
