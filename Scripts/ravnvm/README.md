@@ -10,7 +10,9 @@ RavnVM is a streamlined development tool that automatically sets up RaVN in a vi
     - [NixOS](#nixos)
   - [First-Time Setup](#first-time-setup)
   - [Usage](#usage)
+    - [Interactive menu](#interactive-menu)
     - [Basic Commands](#basic-commands)
+    - [Make interface](#make-interface)
     - [Environment Variables](#environment-variables)
   - [VM Details](#vm-details)
   - [Troubleshooting](#troubleshooting)
@@ -93,11 +95,30 @@ When you run a new branch/commit for the first time, ravnvm will:
 
 ## Usage
 
+### Interactive menu
+
+Running `ravnvm` without arguments opens a numbered menu. It provides the same
+operations as the direct CLI while making the common development flow easier to
+discover:
+
+- run a normal or persistent VM;
+- choose `master`, `dev`, the current branch, or another remote branch/commit;
+- list snapshots or clean the VM cache;
+- check or install host dependencies.
+
+The menu validates the host environment first and shows the RavnVM cache size,
+filesystem usage, free space, and a storage warning when usage reaches 80% or
+90%. Missing KVM is reported as a warning because QEMU can still run without
+hardware acceleration.
+
+Use `q` to exit and `Ctrl-C` to abort the current operation. RavnVM preserves
+diagnostic output and never removes the base image during an abort.
+
 ### Basic Commands
 
 ```bash
-# Run master branch
-ravnvm
+# Run master branch directly
+ravnvm master
 
 # Run specific branch or commit
 ravnvm feature-branch
@@ -119,6 +140,35 @@ ravnvm --check-deps
 # Install dependencies (Arch only)
 ravnvm --install-deps
 ```
+
+### Make interface
+
+The repository's `make/dev.mk` exposes RavnVM through development targets. This
+is an alternative interaction surface over the same VM engine:
+
+```bash
+# Run the current branch, or choose a revision with REF
+make dev-vm
+make dev-vm REF=dev
+make dev-vm REF=abc123def
+
+# Run with persistent changes
+make dev-vm-persist REF=dev
+
+# Inspect and manage snapshots
+make dev-vm-list
+make dev-vm-clean
+
+# Check dependencies and inspect VM disk usage
+make dev-vm-setup
+make dev-vm-size
+
+# Preview a target without launching or changing the VM
+make dev-vm DRY_RUN=1 REF=dev
+```
+
+`make dev-vm` defaults `REF` to the active checkout branch. VM resource
+variables and QEMU overrides can be passed through the make interface.
 
 ### Environment Variables
 
