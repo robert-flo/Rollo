@@ -801,6 +801,7 @@ function show_menu() {
   echo -e "  ${GREEN}7${NC}  ${ICON_UI_LIST}  List VM snapshots"
   echo -e "  ${GREEN}8${NC}  ${ICON_UI_GEAR}  Configure RAM and CPU"
   echo -e "  ${GREEN}9${NC}  ${ICON_DIAGNOSTIC_INFO}  Show RavnVM usage"
+  echo -e "  ${GREEN}10${NC} ${ICON_UI_TERMINAL}  Connect to VM via SSH"
   echo -e "  ${GREEN}q${NC}  ${ICON_UI_CLOSE}  Exit"
   echo ""
   read -r -p "${LIGHT_GRAY}Selection:${NC} " MENU_CHOICE
@@ -891,6 +892,10 @@ function run_custom_revision() {
   run_selected_revision "$custom_revision"
 }
 
+function connect_ssh() {
+  ssh -p 2222 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null arch@127.0.0.1
+}
+
 function run_vm_command() {
   local revision="${1:-master}"
   local persistent_mode="${2:-false}"
@@ -943,6 +948,12 @@ function run_interactive_menu() {
         ;;
       9)
         print_usage
+        press_enter_to_continue
+        ;;
+      10)
+        if ! connect_ssh; then
+          print_error "Unable to connect to the running VM"
+        fi
         press_enter_to_continue
         ;;
       q | Q)
@@ -1002,7 +1013,7 @@ while [ $# -gt 0 ]; do
             exit $?
             ;;
         --ssh)
-            ssh -p 2222 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null arch@127.0.0.1
+            connect_ssh
             exit 0
             ;;
         --help | -h)
