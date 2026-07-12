@@ -97,22 +97,41 @@ When you run a new branch/commit for the first time, ravnvm will:
 
 ### Interactive menu
 
-Running `ravnvm` without arguments opens a numbered menu. It provides the same
-operations as the direct CLI while making the common development flow easier to
-discover:
+Running `ravnvm` without arguments validates the host first and opens the
+interactive menu. The menu is the friendly interface for the same VM engine:
 
-- run a normal or persistent VM;
-- choose `master`, `dev`, the current branch, or another remote branch/commit;
-- list snapshots or clean the VM cache;
-- check or install host dependencies.
+```text
+1  Run master branch
+2  Run dev branch
+3  Run current branch
+4  Run other branch or commit
+5  Show VM storage usage
+6  Clean VM cache
+7  List VM snapshots
+8  Configure RAM and CPU
+9  Show RavnVM usage
+10 Connect to VM via SSH
+q  Exit
+```
+
+Options 1–4 open a second menu where you choose `Ephemeral` (discard changes),
+`Persistent` (save changes), or `Back`. Option 4 accepts either a remote branch
+name or a commit hash. RavnVM always clones or updates the RaVN repository from
+GitHub inside the VM; it does not provision from local working-tree changes.
+
+Option 8 changes RAM and CPU for the current process only. The defaults are
+`VM_MEMORY=4G` and `VM_CPUS=2`. Option 9 displays the same usage information as
+`ravnvm --help`, and option 10 connects to the running VM on SSH port 2222.
 
 The menu validates the host environment first and shows the RavnVM cache size,
 filesystem usage, free space, and a storage warning when usage reaches 80% or
 90%. Missing KVM is reported as a warning because QEMU can still run without
 hardware acceleration.
 
-Use `q` to exit and `Ctrl-C` to abort the current operation. RavnVM preserves
-diagnostic output and never removes the base image during an abort.
+Use `q` to exit and `Ctrl-C` to abort the current operation. RavnVM reports the
+interruption, preserves diagnostic output, and never removes the base image
+during an abort. If required dependencies are missing, only dependency
+installation and exit are offered until validation succeeds.
 
 ### Basic Commands
 
@@ -173,7 +192,7 @@ variables and QEMU overrides can be passed through the make interface.
 ### Environment Variables
 
 ```bash
-# Customize VM resources
+# Customize VM resources (defaults are 4G and 2 CPUs)
 VM_MEMORY=8G VM_CPUS=4 ravnvm
 
 # Set extra QEMU arguments
