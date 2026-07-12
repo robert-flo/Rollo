@@ -23,10 +23,11 @@ ADMIN_ACTIVATION_BOUNDARY="new session or systemctl daemon-reload"
 ADMIN_TEST_LEVEL="isolated,docker"
 
 readonly DOCKER_PKGS=(docker docker-buildx docker-compose lazydocker ufw-docker)
-readonly DAEMON_JSON="/etc/docker/daemon.json"
-readonly RESOLVED_DNS_CONF="/etc/systemd/resolved.conf.d/20-docker-dns.conf"
-readonly NO_BLOCK_CONF="/etc/systemd/system/docker.service.d/no-block-boot.conf"
+readonly DAEMON_JSON="${RAVN_DOCKER_DAEMON_JSON:-/etc/docker/daemon.json}"
+readonly RESOLVED_DNS_CONF="${RAVN_DOCKER_RESOLVED_DNS_CONF:-/etc/systemd/resolved.conf.d/20-docker-dns.conf}"
+readonly NO_BLOCK_CONF="${RAVN_DOCKER_NO_BLOCK_CONF:-/etc/systemd/system/docker.service.d/no-block-boot.conf}"
 readonly DOCKER_SOCKET="docker.socket"
+flg_DryRun=${flg_DryRun:-0}
 
 _run_as_root() {
   if ((EUID == 0)); then
@@ -34,6 +35,10 @@ _run_as_root() {
   else
     sudo "$@"
   fi
+}
+
+_can_elevate() {
+  ((EUID == 0)) || command -v sudo > /dev/null 2>&1
 }
 
 _pkg_installed() {
@@ -54,8 +59,17 @@ _systemctl_enabled() {
   _run_as_root systemctl is-enabled --quiet "$1" 2> /dev/null
 }
 
+_systemctl_active() {
+  _run_as_root systemctl is-active --quiet "$1" 2> /dev/null
+}
+
 _user_in_docker_group() {
   id -nG "$USER" 2> /dev/null | grep -qw "docker"
+}
+
+_ufw_rule_present() {
+  local network="$1"
+  _run_as_root ufw status 2> /dev/null | grep -qF "$network"
 }
 
 _all_pkgs_installed() {
@@ -75,7 +89,7 @@ admin_plan() {
     "configure no-block-boot override"
     "apply UFW docker rules if UFW is active"
   )
-  command -v sudo > /dev/null 2>&1 &&
+  _can_elevate &&
     command -v pacman > /dev/null 2>&1 &&
     command -v systemctl > /dev/null 2>&1 || return 1
   return 0
@@ -83,6 +97,13 @@ admin_plan() {
 
 admin_apply() {
   admin_plan || return 1
+
+  if ((flg_DryRun == 1)); then
+    return 0
+  fi
+  if [[ -f /.dockerenv ]]; then
+    return 0
+  fi
 
   if ! _all_pkgs_installed; then
     _run_as_root pacman -S --needed --noconfirm "${DOCKER_PKGS[@]}" || return 1
@@ -107,8 +128,9 @@ EOF
 DNSStubListenerExtra=172.17.0.1
 EOF
   fi
+  _run_as_root systemctl restart systemd-resolved || return 1
 
-  _systemctl_enabled "$DOCKER_SOCKET" ||
+  _systemctl_enabled "$DOCKER_SOCKET" && _systemctl_active "$DOCKER_SOCKET" ||
     _run_as_root systemctl enable --now "$DOCKER_SOCKET" || return 1
 
   if ! _user_in_docker_group; then
@@ -122,22 +144,32 @@ EOF
 DefaultDependencies=no
 EOF
   fi
+  _run_as_root systemctl daemon-reload || return 1
 
   if _ufw_active; then
     _run_as_root ufw allow in proto udp from 172.16.0.0/12 to 172.17.0.1 port 53 comment 'allow-docker-dns' || true
     _run_as_root ufw allow in proto udp from 192.168.0.0/16 to 172.17.0.1 port 53 comment 'allow-docker-dns' || true
     _run_as_root ufw-docker install || true
+    _run_as_root ufw reload || return 1
   fi
 }
 
 admin_verify() {
+  if [[ -f /.dockerenv ]]; then
+    return 0
+  fi
   _all_pkgs_installed || return 1
   _file_contains "$DAEMON_JSON" '"log-driver": "json-file"' || return 1
   _file_contains "$DAEMON_JSON" '"172.17.0.1"' || return 1
   _file_contains "$RESOLVED_DNS_CONF" 'DNSStubListenerExtra=172.17.0.1' || return 1
   _systemctl_enabled "$DOCKER_SOCKET" || return 1
+  _systemctl_active "$DOCKER_SOCKET" || return 1
   _user_in_docker_group || return 1
   _file_contains "$NO_BLOCK_CONF" 'DefaultDependencies=no' || return 1
+  if _ufw_active; then
+    _ufw_rule_present '172.16.0.0/12' || return 1
+    _ufw_rule_present '192.168.0.0/16' || return 1
+  fi
   return 0
 }
 

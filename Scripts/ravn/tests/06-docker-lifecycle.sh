@@ -34,11 +34,14 @@ cat > "$fake_bin/systemctl" << 'EOF'
 state_file="${RAVN_DOCKER_SVCS_STATE:?}"
 _svc() { local svc=""; for arg in "$@"; do [[ $arg == -* ]] && continue; svc="$arg"; done; printf '%s\n' "$svc"; }
 _is_enabled() { grep -qxF "$1=enabled" "$state_file"; }
+_is_active()  { grep -qxF "$1=active" "$state_file"; }
 _set()        { printf '%s=%s\n' "$1" "$2" >> "$state_file"; }
 _unset() { local tmp; tmp=$(mktemp); grep -vxF "$1=enabled" "$state_file" > "$tmp" || true; mv "$tmp" "$state_file"; }
 case "${1:-}" in
   is-enabled) _is_enabled "$(_svc "$@")" ;;
-  enable)     [[ ${RAVN_DOCKER_SCENARIO:-active} != apply-failure ]] || exit 1; _set "$(_svc "$@")" enabled ;;
+  is-active)  _is_active "$(_svc "$@")" ;;
+  enable)     [[ ${RAVN_DOCKER_SCENARIO:-active} != apply-failure ]] || exit 1; _set "$(_svc "$@")" enabled; [[ $* == *--now* ]] && _set "$(_svc "$@")" active ;;
+  restart|daemon-reload) : ;;
   disable)    _unset "$(_svc "$@")" ;;
   *) exit 2 ;;
 esac
@@ -132,6 +135,22 @@ admin_apply
 admin_verify
 admin_apply
 admin_verify
+
+# ─── Dry-run leaves the desired state unchanged -----------------------------
+: > "$state_pkgs"
+: > "$state_svcs"
+rm -rf "${state_files:?}"/*
+: > "$state_user"
+# shellcheck disable=SC2034
+flg_DryRun=1
+admin_apply
+[[ ! -s $state_pkgs && ! -s $state_svcs && ! -s $state_user ]] || {
+  printf 'FAIL: dry-run changed Docker state\n' >&2
+  exit 1
+}
+# shellcheck disable=SC2034
+flg_DryRun=0
+
 admin_rollback
 admin_verify_reset
 admin_reset
