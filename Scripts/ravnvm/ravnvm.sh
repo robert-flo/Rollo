@@ -800,6 +800,7 @@ function show_menu() {
   echo -e "  ${GREEN}6${NC}  ${ICON_UI_TRASH}  Clean VM cache"
   echo -e "  ${GREEN}7${NC}  ${ICON_UI_LIST}  List VM snapshots"
   echo -e "  ${GREEN}8${NC}  ${ICON_UI_GEAR}  Configure RAM and CPU"
+  echo -e "  ${GREEN}9${NC}  ${ICON_DIAGNOSTIC_INFO}  Show RavnVM usage"
   echo -e "  ${GREEN}q${NC}  ${ICON_UI_CLOSE}  Exit"
   echo ""
   read -r -p "${LIGHT_GRAY}Selection:${NC} " MENU_CHOICE
@@ -938,6 +939,10 @@ function run_interactive_menu() {
         ;;
       8)
         configure_vm_resources || true
+        press_enter_to_continue
+        ;;
+      9)
+        print_usage
         press_enter_to_continue
         ;;
       q | Q)

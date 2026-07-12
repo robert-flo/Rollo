@@ -37,6 +37,7 @@ assert_contains "$menu_output" "Run master branch"
 assert_contains "$menu_output" "Run dev branch"
 assert_contains "$menu_output" "Run current branch"
 assert_contains "$menu_output" "Run other branch or commit"
+assert_contains "$menu_output" "Show RavnVM usage"
 assert_contains "$menu_output" "Goodbye!"
 
 invalid_output=$(printf 'x\n\nq\n' | "$RAVNVM_SCRIPT")
@@ -90,6 +91,12 @@ assert_contains "$resource_invalid_output" "CPU count must be a positive integer
 if grep -Fq "Session resources: 8G RAM, 0 CPUs" <<< "$resource_invalid_output"; then
     fail "invalid CPU count was accepted"
 fi
+
+menu_help_output=$(printf '9\nq\nq\n' | "$RAVNVM_SCRIPT")
+assert_contains "$menu_help_output" "Usage: ravnvm [OPTIONS] [BRANCH/COMMIT]"
+assert_contains "$menu_help_output" "VM_MEMORY=4G"
+assert_contains "$menu_help_output" "VM_QEMU_OVERRIDE"
+assert_contains "$menu_help_output" "NixOS: automatically installs dependencies"
 
 make_output=$(make -s DRY_RUN=1 dev-vm REF=dev)
 assert_contains "$make_output" "ravnvm.sh dev"
