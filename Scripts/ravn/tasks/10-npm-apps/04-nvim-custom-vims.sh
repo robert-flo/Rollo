@@ -12,8 +12,8 @@ DEPENDS=()
 # shellcheck disable=SC2034
 INTERACTIVE=false
 
-readonly NVIM_VIMS_DIR="${HOME}/.config/vims"
-readonly NVIM_BIN_DIR="${HOME}/.local/bin"
+NVIM_VIMS_DIR="${HOME}/.config/vims"
+NVIM_BIN_DIR="${HOME}/.local/bin"
 
 check() {
   [[ -f "${NVIM_VIMS_DIR}/adivim/init.lua" ]] &&
@@ -57,4 +57,28 @@ verify() {
     grep -Fq 'export NVIM_APPNAME=' "${NVIM_BIN_DIR}/${launcher}" || return 1
     grep -Fq "exec -a \"\$NVIM_APPNAME\" nvim" "${NVIM_BIN_DIR}/${launcher}" || return 1
   done
+}
+
+check_updates() {
+  # These upstream repositories are configuration trees, not versioned CLI
+  # artifacts managed by the RaVN update contract.
+  RAVN_UPDATE_RESULT="unsupported"
+  return 1
+}
+
+update() {
+  RAVN_UPDATE_RESULT="unsupported"
+  return 1
+}
+
+reset() {
+  rm -rf "${NVIM_VIMS_DIR}/adivim" "${NVIM_VIMS_DIR}/2kvim" \
+    "${NVIM_BIN_DIR}/adivim" "${NVIM_BIN_DIR}/2kvim"
+}
+
+verify_reset() {
+  [[ ! -e "${NVIM_VIMS_DIR}/adivim" ]] &&
+    [[ ! -e "${NVIM_VIMS_DIR}/2kvim" ]] &&
+    [[ ! -e "${NVIM_BIN_DIR}/adivim" ]] &&
+    [[ ! -e "${NVIM_BIN_DIR}/2kvim" ]]
 }
