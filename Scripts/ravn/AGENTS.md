@@ -34,11 +34,12 @@ Files are discovered automatically with `find tasks/ -name "*.sh" | sort`.
 There is no task registry to edit. Numeric prefixes control ordering, so retain
 the legacy task's number when the replacement is a one-for-one migration.
 
-For issue work, create the worktree with:
+For issue work, create the worktree with the `git-issue-worktree` helper from
+`PATH`:
 
 ```bash
-/home/ravn/.local/bin/git-issue-worktree \
-  -r /home/ravn/Work/Rollo/dev \
+git-issue-worktree \
+  -r <repository-path> \
   -B origin/dev \
   <issue-number> <slug>
 ```
@@ -46,8 +47,33 @@ For issue work, create the worktree with:
 Options must precede the issue number. This repository uses `origin/dev`, not
 `origin/main`.
 
+`git-issue-worktree` is the issue-aware interface over `git-create-worktree`.
+It delegates worktree creation to that helper and derives the topic branch and
+worktree directory names from the issue number and slug. Use
+`git-create-worktree` directly for general feature or chore work; do not use
+raw `git worktree` commands.
+
 Do not commit directly to `dev`; use the issue worktree, then push a branch and
 merge through a pull request.
+
+## Universal task lifecycle contract
+
+Every active task, regardless of backend or task family, must implement all
+five lifecycle operations:
+
+```text
+check()
+install()
+verify()
+reset()
+verify_reset()
+```
+
+`check()` determines whether work is needed; `install()` applies the desired
+state; `verify()` proves the postcondition; `reset()` removes task-owned
+resources; and `verify_reset()` proves the reset postcondition. A task is not
+complete, testable, or merge-ready when any of these operations is missing.
+The runner must never infer reset behavior from `install()` or `cleanup()`.
 
 ## Unified CLI task shape
 
@@ -124,8 +150,11 @@ Every canonical administrative task must declare `ADMIN_TASK_ID`,
 `ADMIN_EXECUTION_PROFILE`, `ADMIN_REQUIRES_PRIVILEGE`, owned resources and
 conflicts, capabilities, reversibility, activation boundary, postconditions,
 evidence scope, and test level. It must expose read-only `admin_plan`,
-authorized `admin_apply`, observable `admin_verify`, and an honest recovery or
-reset hook. Do not use opaque `eval`, undeclared elevation, whole-file claims,
+authorized `admin_apply`, observable `admin_verify`, and honest recovery and
+reset hooks. The universal task lifecycle contract above still applies:
+administrative tasks must expose both `reset()` and `verify_reset()` in
+addition to their administrative reset behavior where the runner requires it.
+Do not use opaque `eval`, undeclared elevation, whole-file claims,
 or success based only on a process exit code.
 
 The required progression is isolated first, then Docker evidence, then host
