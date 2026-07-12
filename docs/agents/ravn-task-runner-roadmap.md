@@ -29,7 +29,7 @@ Task families are:
 - `desktop-apps`
 - `system-admin`
 
-Every new task must declare its identity, family, installer strategy, test level, dependencies, and interactivity. It must implement `check()`, `install()`, and `verify()`. Reset support requires both `reset()` and `verify_reset()`; the runner must never infer uninstall behavior.
+Every new task must declare its identity, family, installer strategy, test level, dependencies, and interactivity. It must implement `check()`, `install()`, `verify()`, `reset()`, and `verify_reset()`. Both reset operations are mandatory; the runner must never infer uninstall behavior.
 
 `check()` only determines whether a task is already satisfied. `verify()` is the postcondition check that permits a successful result.
 
@@ -49,7 +49,7 @@ The menu is inspired by `Scripts/git-setup` and must provide:
 1. Verify current configuration
 2. Run setup — explicit `ALL` or manual task selection
 3. Run integration test — explicit `ALL` or manual task selection
-4. Reset selected tasks — only tasks supporting `reset()` and `verify_reset()`
+4. Reset selected tasks — every task must run `reset()` followed by `verify_reset()`
 5. Exit
 
 The first increment must preserve compatibility diagnostics for existing legacy tasks. It must not attempt to repair or migrate all existing tasks.
