@@ -11,16 +11,16 @@ trap 'rm -rf "$XDG_CACHE_HOME"' EXIT
 source "${RAVN_DIR}/framework/mise.sh"
 
 fixture_bin="${XDG_CACHE_HOME}/mise"
-cat > "$fixture_bin" << 'EOF'
+cat >"$fixture_bin" <<'EOF'
 #!/usr/bin/env bash
 printf '%s\n' '2026.6.11 linux-x64'
 EOF
 chmod +x "$fixture_bin"
 
 export RAVN_MISE_BIN="$fixture_bin"
-ravn_verify_mise > /dev/null
+ravn_verify_mise >/dev/null
 [[ $RAVN_EVIDENCE_MISE_VERSION == "2026.6.11" ]]
-ravn_bootstrap_mise > /dev/null
+ravn_bootstrap_mise >/dev/null
 [[ $RAVN_EVIDENCE_MISE_VERSION == "2026.6.11" ]]
 
 export RAVN_MISE_BIN="${XDG_CACHE_HOME}/missing-mise"

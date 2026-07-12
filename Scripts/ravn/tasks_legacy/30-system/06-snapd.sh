@@ -56,9 +56,9 @@ install() {
   # 1. Install snapd if not present
   if ! pkg_installed snapd; then
     info "Instalando snapd y dependencias necesarias (apparmor, squashfs-tools)..."
-    if command -v yay &> /dev/null; then
+    if command -v yay &>/dev/null; then
       yay -S --noconfirm snapd apparmor squashfs-tools
-    elif command -v paru &> /dev/null; then
+    elif command -v paru &>/dev/null; then
       paru -S --noconfirm snapd apparmor squashfs-tools
     else
       error_msg "No se encontró yay ni paru para instalar snapd desde AUR."

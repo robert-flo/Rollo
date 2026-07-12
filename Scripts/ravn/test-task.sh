@@ -52,7 +52,7 @@ GLOBAL_FN="${RAVN_DIR}/global_fn.sh"
 DOCKER_IMAGE="archlinux:latest"
 
 print_usage() {
-  cat << EOF
+  cat <<EOF
 test-task.sh — Pruebas aisladas de tareas RaVN (Docker)
 
 Uso:
@@ -88,6 +88,41 @@ get_task_metadata() {
   printf '%s' "$metadata"
 }
 
+task_is_reference_only() {
+  local task_file="$1"
+  local metadata=""
+  local reference_only=""
+
+  metadata=$(get_task_metadata "$task_file")
+  IFS='|' read -r _ _ _ reference_only <<<"$metadata"
+  [[ ${reference_only:-false} == true ]]
+}
+
+partition_active_tasks() {
+  local task_file=""
+  local package=""
+  local -a active_tasks=()
+  local -a reference_tasks=()
+
+  ACTIVE_TASKS=()
+  SKIPPED_REFERENCES=()
+
+  for task_file in "$@"; do
+    [[ ! -f $task_file ]] && continue
+    if task_is_reference_only "$task_file"; then
+      metadata=$(get_task_metadata "$task_file")
+      IFS='|' read -r package _ _ _ <<<"$metadata"
+      [[ -z $package ]] && package=$(basename "$task_file" .sh)
+      reference_tasks+=("$package")
+    else
+      active_tasks+=("$task_file")
+    fi
+  done
+
+  ACTIVE_TASKS=("${active_tasks[@]}")
+  SKIPPED_REFERENCES=("${reference_tasks[@]}")
+}
+
 run_static_test() {
   local task_file="$1"
 
@@ -103,51 +138,51 @@ MISE_FIXTURE_VERSION="${RAVN_MISE_FIXTURE_VERSION:-2026.6.11}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --all)
-      mapfile -t TASKS_TO_TEST < <(find "$TASKS_DIR" -name "*.sh" | sort)
-      shift
-      ;;
-    ALL | all)
-      mapfile -t TASKS_TO_TEST < <(find "$TASKS_DIR" -name "*.sh" | sort)
-      shift
-      ;;
-    --dry-run)
-      DRY_RUN=1
-      shift
-      ;;
-    --keep)
-      KEEP_CONTAINER=1
-      shift
-      ;;
-    --include-reference)
-      INCLUDE_REFERENCES=1
-      shift
-      ;;
-    --mise-version)
-      if (($# < 2)); then
-        echo "Error: --mise-version requiere una versión." >&2
-        exit 2
+  --all)
+    mapfile -t TASKS_TO_TEST < <(find "$TASKS_DIR" -name "*.sh" | sort)
+    shift
+    ;;
+  ALL | all)
+    mapfile -t TASKS_TO_TEST < <(find "$TASKS_DIR" -name "*.sh" | sort)
+    shift
+    ;;
+  --dry-run)
+    DRY_RUN=1
+    shift
+    ;;
+  --keep)
+    KEEP_CONTAINER=1
+    shift
+    ;;
+  --include-reference)
+    INCLUDE_REFERENCES=1
+    shift
+    ;;
+  --mise-version)
+    if (($# < 2)); then
+      echo "Error: --mise-version requiere una versión." >&2
+      exit 2
+    fi
+    MISE_FIXTURE_VERSION="$2"
+    shift 2
+    ;;
+  -h | --help)
+    print_usage
+    exit 0
+    ;;
+  *)
+    if [[ -d "$TASKS_DIR/$1" ]]; then
+      mapfile -t found < <(find "$TASKS_DIR/$1" -name "*.sh" | sort)
+      TASKS_TO_TEST+=("${found[@]}")
+    else
+      mapfile -t found < <(find "$TASKS_DIR" -name "*${1}*.sh" | sort)
+      if [[ ${#found[@]} -eq 0 ]]; then
+        mapfile -t found < <(grep -rl "PACKAGE=.*${1}" "$TASKS_DIR" 2>/dev/null | sort)
       fi
-      MISE_FIXTURE_VERSION="$2"
-      shift 2
-      ;;
-    -h | --help)
-      print_usage
-      exit 0
-      ;;
-    *)
-      if [[ -d "$TASKS_DIR/$1" ]]; then
-        mapfile -t found < <(find "$TASKS_DIR/$1" -name "*.sh" | sort)
-        TASKS_TO_TEST+=("${found[@]}")
-      else
-        mapfile -t found < <(find "$TASKS_DIR" -name "*${1}*.sh" | sort)
-        if [[ ${#found[@]} -eq 0 ]]; then
-          mapfile -t found < <(grep -rl "PACKAGE=.*${1}" "$TASKS_DIR" 2> /dev/null | sort)
-        fi
-        TASKS_TO_TEST+=("${found[@]}")
-      fi
-      shift
-      ;;
+      TASKS_TO_TEST+=("${found[@]}")
+    fi
+    shift
+    ;;
   esac
 done
 
@@ -160,8 +195,18 @@ fi
 # Deduplicate
 mapfile -t TASKS_TO_TEST < <(printf "%s\n" "${TASKS_TO_TEST[@]}" | sort -u)
 
+ACTIVE_TASKS=()
+SKIPPED_REFERENCES=()
+if ((INCLUDE_REFERENCES == 0)); then
+  partition_active_tasks "${TASKS_TO_TEST[@]}"
+  TASKS_TO_TEST=("${ACTIVE_TASKS[@]}")
+fi
+
 echo "==> RaVN Task Tester (entorno aislado Docker)"
-echo "    Tareas a probar: ${#TASKS_TO_TEST[@]}"
+echo "    Tareas activas a probar: ${#TASKS_TO_TEST[@]}"
+if ((${#SKIPPED_REFERENCES[@]} > 0)); then
+  echo "    Omitidas (reference-only): ${#SKIPPED_REFERENCES[@]} (${SKIPPED_REFERENCES[*]})"
+fi
 echo ""
 
 FAILED=()
@@ -178,44 +223,43 @@ for task_file in "${TASKS_TO_TEST[@]}"; do
   echo "Probando: $rel_path"
 
   metadata=$(get_task_metadata "$task_file")
-  IFS='|' read -r package test_level installer_strategy reference_only <<< "$metadata"
+  IFS='|' read -r package test_level installer_strategy reference_only <<<"$metadata"
   [[ -z $package ]] && package="$task_name"
 
   if [[ ${reference_only:-false} == true && $INCLUDE_REFERENCES == 0 ]]; then
-    echo "⚠ $package → OMITIDA (reference-only; use --include-reference)"
-    UNSUPPORTED+=("$package")
+    echo "↷ $package → OMITIDA (reference-only; use --include-reference)"
     continue
   fi
 
   case "$test_level" in
-    static)
-      if run_static_test "$task_file"; then
-        echo "✓ $package → PASÓ (static)"
-        PASSED+=("$package")
-      else
-        echo "✗ $package → FALLÓ (static)"
-        FAILED+=("$package")
-      fi
-      continue
-      ;;
-    live)
-      echo "⚠ $package → NO VERIFICABLE (requiere live)"
-      UNSUPPORTED+=("$package")
-      continue
-      ;;
-    "" | isolated)
-      ;;
-    *)
-      echo "⚠ $package → NO VERIFICABLE (TEST_LEVEL inválido: $test_level)"
-      UNSUPPORTED+=("$package")
-      continue
-      ;;
+  static)
+    if run_static_test "$task_file"; then
+      echo "✓ $package → PASÓ (static)"
+      PASSED+=("$package")
+    else
+      echo "✗ $package → FALLÓ (static)"
+      FAILED+=("$package")
+    fi
+    continue
+    ;;
+  live)
+    echo "⚠ $package → NO VERIFICABLE (requiere live)"
+    UNSUPPORTED+=("$package")
+    continue
+    ;;
+  "" | isolated)
+    ;;
+  *)
+    echo "⚠ $package → NO VERIFICABLE (TEST_LEVEL inválido: $test_level)"
+    UNSUPPORTED+=("$package")
+    continue
+    ;;
   esac
 
   required_packages="curl git which"
 
   test_script=$(mktemp)
-  cat > "$test_script" << EOF
+  cat >"$test_script" <<EOF
 #!/usr/bin/env bash
 set -e
 export PATH="\$HOME/.local/bin:\$PATH"
@@ -235,6 +279,7 @@ source "/hooks.sh" 2>/dev/null || true
 source "/contract.sh" 2>/dev/null || true
 source "/mise.sh" 2>/dev/null || true
 source "/mise-cli.sh" 2>/dev/null || true
+source "/upstream.sh" 2>/dev/null || true
 export RAVN_DIR="/"
 source "/task.sh" 2>/dev/null || true
 
@@ -295,16 +340,17 @@ EOF
   fi
 
   if docker run "${docker_args[@]}" \
-       -v "$task_file:/task.sh:ro" \
-       -v "$GLOBAL_FN:/global_fn.sh:ro" \
-       -v "$RAVN_DIR/omarchy-npx-install:/omarchy-npx-install:ro" \
-       -v "$RAVN_DIR/framework/package.sh:/package.sh:ro" \
-       -v "$RAVN_DIR/framework/hooks.sh:/hooks.sh:ro" \
-       -v "$RAVN_DIR/framework/contract.sh:/contract.sh:ro" \
-       -v "$RAVN_DIR/framework/mise.sh:/mise.sh:ro" \
-       -v "$RAVN_DIR/framework/mise-cli.sh:/mise-cli.sh:ro" \
-       -v "$test_script:/test.sh:ro" \
-       "$DOCKER_IMAGE" bash /test.sh; then
+    -v "$task_file:/task.sh:ro" \
+    -v "$GLOBAL_FN:/global_fn.sh:ro" \
+    -v "$RAVN_DIR/omarchy-npx-install:/omarchy-npx-install:ro" \
+    -v "$RAVN_DIR/framework/package.sh:/package.sh:ro" \
+    -v "$RAVN_DIR/framework/hooks.sh:/hooks.sh:ro" \
+    -v "$RAVN_DIR/framework/contract.sh:/contract.sh:ro" \
+    -v "$RAVN_DIR/framework/mise.sh:/mise.sh:ro" \
+    -v "$RAVN_DIR/framework/mise-cli.sh:/mise-cli.sh:ro" \
+    -v "$RAVN_DIR/framework/upstream.sh:/upstream.sh:ro" \
+    -v "$test_script:/test.sh:ro" \
+    "$DOCKER_IMAGE" bash /test.sh; then
     echo "✓ $package → PASÓ"
     PASSED+=("$package")
   else
@@ -326,6 +372,9 @@ echo "════════════════════════�
 echo "Resumen de pruebas"
 echo "  ✓ Pasaron:  ${#PASSED[@]}"
 echo "  ✗ Fallaron: ${#FAILED[@]}"
+if ((${#SKIPPED_REFERENCES[@]} > 0)); then
+  echo "  ↷ Omitidas (reference): ${#SKIPPED_REFERENCES[@]}"
+fi
 echo "  ⚠ No verificables: ${#UNSUPPORTED[@]}"
 if [[ ${#FAILED[@]} -gt 0 ]]; then
   echo "  Fallidos: ${FAILED[*]}"

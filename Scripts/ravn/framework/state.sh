@@ -3,7 +3,7 @@
 
 readonly RAVN_TASK_STATES=(
   absent partial installed verified stale broken dependency-missing
-  update-failed rollback-failed
+  update-failed rollback-failed unsupported
 )
 readonly RAVN_EVIDENCE_MAX_RUNS=30
 readonly RAVN_EVIDENCE_MAX_BYTES=$((50 * 1024 * 1024))
@@ -77,7 +77,7 @@ ravn_record_task_evidence() {
   run_file="${runs_dir}/${timestamp}.json"
   escaped_detail=$(_ravn_json_escape "$detail")
 
-  cat > "$run_file" << EOF
+  cat >"$run_file" <<EOF
 {
   "task": "$(_ravn_json_escape "$task_id")",
   "operation": "$(_ravn_json_escape "$operation")",
@@ -88,12 +88,13 @@ ravn_record_task_evidence() {
   "resolved_version": "$(_ravn_json_escape "${RAVN_EVIDENCE_RESOLVED_VERSION:-}")",
   "runtime_version": "$(_ravn_json_escape "${RAVN_EVIDENCE_RUNTIME_VERSION:-}")",
   "mise_version": "$(_ravn_json_escape "${RAVN_EVIDENCE_MISE_VERSION:-}")",
+  "upstream_sha256": "$(_ravn_json_escape "${RAVN_EVIDENCE_UPSTREAM_SHA256:-}")",
   "log_path": "$(_ravn_json_escape "$log_path")",
   "timestamp": "${timestamp}"
 }
 EOF
   cp "$run_file" "${task_dir}/last-result.json"
-  cat > "${task_dir}/state.toml" << EOF
+  cat >"${task_dir}/state.toml" <<EOF
 task = "$(_ravn_json_escape "$task_id")"
 status = "$(_ravn_json_escape "$status")"
 operation = "$(_ravn_json_escape "$operation")"
@@ -102,6 +103,7 @@ requested_version = "$(_ravn_json_escape "${RAVN_EVIDENCE_REQUESTED_VERSION:-}")
 resolved_version = "$(_ravn_json_escape "${RAVN_EVIDENCE_RESOLVED_VERSION:-}")"
 runtime_version = "$(_ravn_json_escape "${RAVN_EVIDENCE_RUNTIME_VERSION:-}")"
 mise_version = "$(_ravn_json_escape "${RAVN_EVIDENCE_MISE_VERSION:-}")"
+upstream_sha256 = "$(_ravn_json_escape "${RAVN_EVIDENCE_UPSTREAM_SHA256:-}")"
 log_path = "$(_ravn_json_escape "$log_path")"
 last_recorded_at = "${timestamp}"
 EOF
@@ -141,7 +143,7 @@ state_set() {
   local state_dir="${RAVN_DIR}/cache/state"
 
   mkdir -p "$state_dir"
-  printf '%s' "$value" > "${state_dir}/${key}"
+  printf '%s' "$value" >"${state_dir}/${key}"
 }
 
 state_get() {

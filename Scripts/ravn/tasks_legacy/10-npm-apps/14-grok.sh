@@ -10,7 +10,7 @@ DEPENDS=()
 INTERACTIVE=false
 
 check() {
-  command -v grok &> /dev/null
+  command -v grok &>/dev/null
 }
 
 install() {

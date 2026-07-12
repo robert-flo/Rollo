@@ -31,6 +31,10 @@ the applicable manual host validation.
 
 - `00-core` and `30-system` remain quarantined under `tasks_legacy` and are
   reported as legacy coverage until canonical replacements are designed.
+- `10-npm-apps/11-codex.sh` is the second active canonical npm descriptor.
+- `10-npm-apps/12-copilot.sh` is the third active canonical npm descriptor.
+- `10-npm-apps/24-zero.sh` is the fourth active canonical npm descriptor.
+- `20-curl-apps/14-grok.sh` is the fifth active canonical upstream descriptor.
 - `10-npm-apps/28-opencode.sh` is the first active canonical npm descriptor.
 - `10-npm-apps/28-opencode-mise.sh` remains reference-only and is excluded from
   normal discovery and `ALL` tests.

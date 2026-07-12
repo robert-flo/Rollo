@@ -2,6 +2,23 @@
 
 Issues and PRDs for this repo live as GitHub issues. Use the `gh` CLI for all operations.
 
+## Issue title convention
+
+Always prefix issue titles with the issue number and a separator:
+
+```text
+<number> - <descriptive title>
+```
+
+For example:
+
+```text
+51 - Migrate legacy Codex CLI task to canonical mise lifecycle
+```
+
+For a new issue, create it first, then rename it after GitHub assigns the
+number, because the number is not known at creation time.
+
 ## Conventions
 
 - **Create an issue**: `gh issue create --title "..." --body "..."`. Use a heredoc for multi-line bodies.
