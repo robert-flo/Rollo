@@ -133,7 +133,7 @@ INSTALLER_STRATEGY="mise"        # pacman | mise | omarchy-npx | flatpak | upstr
 TEST_LEVEL="isolated"             # static | isolated | live
 ```
 
-The lifecycle contract requires `check()`, `install()`, and `verify()`. A task only supports reset when it implements both `reset()` and `verify_reset()`. Existing tasks without the metadata are treated as legacy until migrated; they must not be presented as fully verified.
+The lifecycle contract requires `check()`, `install()`, `verify()`, `reset()`, and `verify_reset()`. Every task must own and implement both reset operations; the runner must never infer uninstall behavior. Existing tasks without the complete contract are treated as legacy until migrated; they must not be presented as fully verified.
 
 ## Non-interactive Baseline Mode
 

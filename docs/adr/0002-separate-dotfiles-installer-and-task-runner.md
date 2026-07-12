@@ -27,7 +27,7 @@ Optional tasks must not be required for the dotfiles installer to complete succe
 
 Tasks will be segmented into task families with appropriate verification and testing strategies. The framework will not assume that all tasks are package-manager installations; each task may select its own installer strategy.
 
-Reset is task-owned. A task may expose `reset()` and `verify_reset()` to support clean reinstallation. The runner must not infer an uninstall procedure from `install()` or from `cleanup()`.
+Reset is mandatory and task-owned. Every task must expose both `reset()` and `verify_reset()` to support clean reinstallation and prove the reset postcondition. The runner must not infer an uninstall procedure from `install()` or from `cleanup()`.
 - Some existing tasks will need to be reclassified or split.
 
 ## Entry point
