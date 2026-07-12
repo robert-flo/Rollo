@@ -608,10 +608,10 @@ function show_storage_status() {
     }'
   ) || true
 
-  print_section "Storage"
-  print_info "VM cache: $(format_bytes "$cache_bytes")"
-  print_info "Disk: $(format_bytes "$filesystem_used") used / $(format_bytes "$filesystem_total") (${filesystem_percent}%)"
-  print_info "Free: $(format_bytes "$filesystem_available")"
+  print_section "${ICON_UI_STORAGE}Storage"
+  print_info "${ICON_UI_DATABASE} VM cache: $(format_bytes "$cache_bytes")"
+  print_info "${ICON_UI_STORAGE} Disk: $(format_bytes "$filesystem_used") used / $(format_bytes "$filesystem_total") (${filesystem_percent}%)"
+  print_info "${ICON_UI_DOWNLOAD} Free: $(format_bytes "$filesystem_available")"
 
   if ((filesystem_percent >= 90)); then
     print_error "Storage critically low; clean old VM snapshots before continuing"
@@ -638,7 +638,7 @@ function validate_environment() {
   local command_name=""
   local validation_failed=0
 
-  print_section "Validating Environment"
+  print_section "${ICON_UI_GEAR} Validating Environment"
   for command_name in qemu-system-x86_64 qemu-img curl git; do
     if ! validate_command "$command_name"; then
       validation_failed=1
@@ -671,15 +671,15 @@ function validate_environment() {
 
 function show_menu() {
   clear || true
-  print_header "RavnVM — Development VM"
-  print_section "Choose an action"
-  echo "  1  Run master branch"
-  echo "  2  Run master branch with persistence"
-  echo "  3  List cached snapshots"
-  echo "  4  Clean VM cache"
-  echo "  5  Check dependencies"
-  echo "  6  Install dependencies"
-  echo "  q  Exit"
+  print_header "${ICON_UI_TERMINAL} RavnVM — Development VM"
+  print_section "${ICON_UI_COMMAND} Choose an action"
+  echo "  ${ICON_UI_PLAY} 1  Run master branch"
+  echo "  ${ICON_UI_SAVE} 2  Run master branch with persistence"
+  echo "  ${ICON_UI_LIST} 3  List cached snapshots"
+  echo "  ${ICON_UI_TRASH} 4  Clean VM cache"
+  echo "  ${ICON_UI_TEST} 5  Check dependencies"
+  echo "  ${ICON_UI_PACKAGE} 6  Install dependencies"
+  echo "  ${ICON_UI_CLOSE} q  Exit"
   echo ""
   read -r -p "Selection: " MENU_CHOICE
 }
@@ -700,48 +700,48 @@ function select_revision() {
 
   current_branch=$(get_current_branch)
 
-  print_section "Choose a RaVN revision"
-  echo "  1  master"
-  echo "  2  dev"
+  print_section "${ICON_GIT_BRANCH} Choose a RaVN revision"
+  echo "  ${ICON_GIT_BRANCH} 1  master"
+  echo "  ${ICON_GIT_BRANCH} 2  dev"
   if [[ -n $current_branch && $current_branch != "master" && $current_branch != "dev" ]]; then
-    echo "  3  $current_branch (current branch)"
+    echo "  ${ICON_GIT_BRANCH} 3  $current_branch (current branch)"
   else
-    echo "  3  Current branch"
+    echo "  ${ICON_GIT_BRANCH} 3  Current branch"
   fi
-  echo "  4  Other branch or commit"
-  echo "  q  Back"
+  echo "  ${ICON_UI_SEARCH} 4  Other branch or commit"
+  echo "  ${ICON_UI_ARROW_LEFT} q  Back"
   echo ""
   read -r -p "Revision: " revision_choice
 
   case "$revision_choice" in
-  1)
-    selected_revision="master"
-    ;;
-  2)
-    selected_revision="dev"
-    ;;
-  3)
-    if [[ -n $current_branch ]]; then
-      selected_revision="$current_branch"
-    else
-      echo "No current branch detected; using master."
+    1)
       selected_revision="master"
-    fi
-    ;;
-  4)
-    read -r -p "Branch or commit: " selected_revision
-    if [[ -z $selected_revision ]]; then
-      echo "A branch or commit is required."
+      ;;
+    2)
+      selected_revision="dev"
+      ;;
+    3)
+      if [[ -n $current_branch ]]; then
+        selected_revision="$current_branch"
+      else
+        echo "No current branch detected; using master."
+        selected_revision="master"
+      fi
+      ;;
+    4)
+      read -r -p "Branch or commit: " selected_revision
+      if [[ -z $selected_revision ]]; then
+        echo "A branch or commit is required."
+        return 1
+      fi
+      ;;
+    q | Q)
       return 1
-    fi
-    ;;
-  q | Q)
-    return 1
-    ;;
-  *)
-    echo "Invalid revision option: $revision_choice"
-    return 1
-    ;;
+      ;;
+    *)
+      echo "Invalid revision option: $revision_choice"
+      return 1
+      ;;
   esac
 
   SELECTED_REVISION="$selected_revision"
@@ -768,46 +768,46 @@ function run_interactive_menu() {
     choice="$MENU_CHOICE"
 
     case "$choice" in
-    1)
-      select_revision || true
-      selected_revision="$SELECTED_REVISION"
-      if [[ -n $selected_revision ]]; then
-        run_vm_command "$selected_revision" false || true
-      fi
-      press_enter_to_continue
-      ;;
-    2)
-      select_revision || true
-      selected_revision="$SELECTED_REVISION"
-      if [[ -n $selected_revision ]]; then
-        run_vm_command "$selected_revision" true || true
-      fi
-      press_enter_to_continue
-      ;;
-    3)
-      list_snapshots || true
-      press_enter_to_continue
-      ;;
-    4)
-      clean_cache || true
-      press_enter_to_continue
-      ;;
-    5)
-      check_deps_only || true
-      press_enter_to_continue
-      ;;
-    6)
-      (install_all_arch_dependencies) || true
-      press_enter_to_continue
-      ;;
-    q | Q)
-      echo "Goodbye!"
-      return 0
-      ;;
-    *)
-      echo "Invalid option: $choice"
-      press_enter_to_continue
-      ;;
+      1)
+        select_revision || true
+        selected_revision="$SELECTED_REVISION"
+        if [[ -n $selected_revision ]]; then
+          run_vm_command "$selected_revision" false || true
+        fi
+        press_enter_to_continue
+        ;;
+      2)
+        select_revision || true
+        selected_revision="$SELECTED_REVISION"
+        if [[ -n $selected_revision ]]; then
+          run_vm_command "$selected_revision" true || true
+        fi
+        press_enter_to_continue
+        ;;
+      3)
+        list_snapshots || true
+        press_enter_to_continue
+        ;;
+      4)
+        clean_cache || true
+        press_enter_to_continue
+        ;;
+      5)
+        check_deps_only || true
+        press_enter_to_continue
+        ;;
+      6)
+        (install_all_arch_dependencies) || true
+        press_enter_to_continue
+        ;;
+      q | Q)
+        echo "Goodbye!"
+        return 0
+        ;;
+      *)
+        echo "Invalid option: $choice"
+        press_enter_to_continue
+        ;;
     esac
   done
 }
@@ -819,7 +819,7 @@ if [[ $# -eq 0 ]]; then
     if ! validate_environment; then
         print_error "Environment validation failed; RavnVM will not open the menu"
         exit 1
-    fi
+  fi
     run_interactive_menu
     exit 0
 fi
@@ -873,7 +873,7 @@ done
 run_vm_command_direct() {
     if ! check_dependencies; then
         return 1
-    fi
+  fi
 
     download_archbox
     run_vm "$ref" "$persistent"
