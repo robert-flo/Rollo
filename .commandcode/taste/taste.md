@@ -16,6 +16,7 @@
 - Prefer latest versions over pinned versions when installing packages. Confidence: 0.65
 - Document agreed-upon decisions and plans in docs/ for session continuity and agent guidance. Confidence: 0.70
 - Keep work tickets and PRs atomic for maintainable and testable results. Confidence: 0.70
+- For migrating legacy tasks to canonical admin tasks, use the 4-ticket pattern: (1) create canonical task, (2) add lifecycle test, (3) add Docker regression test, (4) retire legacy task. Tickets 2 and 4 block on 1; ticket 4 blocks on 2 and 3. Confidence: 0.70
 
 # testing
-- When completing a migration/refactoring ticket, run the full relevant test suite (not just discovery) to verify functionality before declaring done. Confidence: 0.60
+- When completing a migration/refactoring ticket, run the full relevant test suite (not just discovery) to verify functionality before declaring done. Confidence: 0.70
