@@ -26,11 +26,14 @@ cat > "$fake_bin/systemctl" << 'EOF'
 state_file="${RAVN_DOCKER_SVCS_STATE:?}"
 _svc() { local svc=""; for arg in "$@"; do [[ $arg == -* ]] && continue; svc="$arg"; done; printf '%s\n' "$svc"; }
 _is_enabled() { grep -qxF "$1=enabled" "$state_file"; }
+_is_active()  { grep -qxF "$1=active" "$state_file"; }
 _set()        { printf '%s=%s\n' "$1" "$2" >> "$state_file"; }
 _unset() { local tmp; tmp=$(mktemp); grep -vxF "$1=enabled" "$state_file" > "$tmp" || true; mv "$tmp" "$state_file"; }
 case "${1:-}" in
   is-enabled) _is_enabled "$(_svc "$@")" ;;
-  enable)     _set "$(_svc "$@")" enabled ;;
+  is-active)  _is_active "$(_svc "$@")" ;;
+  enable)     _set "$(_svc "$@")" enabled; [[ $* == *--now* ]] && _set "$(_svc "$@")" active ;;
+  restart|daemon-reload) : ;;
   disable)    _unset "$(_svc "$@")" ;;
   *) exit 2 ;;
 esac
