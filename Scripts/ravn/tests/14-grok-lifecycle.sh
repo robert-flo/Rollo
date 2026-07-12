@@ -7,6 +7,10 @@ export RAVN_DIR
 GROK_CMD="${HOME}/.local/bin/grok"
 TASK_SELECTOR="grok"
 
+grok_version_id() {
+  "$GROK_CMD" version | awk 'NR == 1 { print $2 }'
+}
+
 # shellcheck disable=SC1091
 source "${RAVN_DIR}/global_fn.sh"
 for fw in "${RAVN_DIR}"/framework/*.sh; do
@@ -33,9 +37,36 @@ TASK_RESULTS=()
 run_selected_tasks run "$TASK_SELECTOR"
 assert_result "grok:skipped"
 
-version_before=$("$GROK_CMD" version)
+version_before=$(grok_version_id)
 [[ -n $version_before ]] || {
   printf 'FAIL: grok version returned empty output\n' >&2
+  exit 1
+}
+
+TASK_RESULTS=()
+run_selected_tasks check-updates "$TASK_SELECTOR"
+[[ ${TASK_RESULTS[0]} == "grok:up-to-date" || ${TASK_RESULTS[0]} == "grok:update-available" ]] || {
+  printf 'FAIL: unexpected grok check-updates result: %s\n' "${TASK_RESULTS[0]:-}" >&2
+  exit 1
+}
+
+TASK_RESULTS=()
+run_selected_tasks update "$TASK_SELECTOR"
+assert_result "grok:verified"
+
+version_before=$(grok_version_id)
+export RAVN_TEST_UPDATE_VERIFY_FAIL=1
+TASK_RESULTS=()
+if run_selected_tasks update "$TASK_SELECTOR"; then
+  printf 'FAIL: grok update should fail when promotion verification is blocked\n' >&2
+  exit 1
+fi
+unset RAVN_TEST_UPDATE_VERIFY_FAIL
+assert_result "grok:update-failed"
+version_after=$(grok_version_id)
+[[ $version_before == "$version_after" ]] || {
+  printf 'FAIL: grok version changed after failed update (%s -> %s)\n' \
+    "$version_before" "$version_after" >&2
   exit 1
 }
 
