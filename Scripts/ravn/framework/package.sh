@@ -82,6 +82,9 @@ ravn_cli_task() {
     if declare -p CLI_UPDATE_ARGS &>/dev/null; then
       UPSTREAM_UPDATE_ARGS=("${CLI_UPDATE_ARGS[@]}")
     fi
+    if declare -p CLI_INSTALL_ARGS &>/dev/null; then
+      UPSTREAM_INSTALL_ARGS=("${CLI_INSTALL_ARGS[@]}")
+    fi
     UPSTREAM_INSTALL_DIR_ENV="${CLI_INSTALL_DIR_ENV:-}"
     ravn_upstream_task
     ;;
