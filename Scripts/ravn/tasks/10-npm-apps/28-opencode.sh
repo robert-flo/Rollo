@@ -5,12 +5,7 @@
 CLI_PACKAGE="opencode-ai"
 # shellcheck disable=SC2034
 CLI_COMMAND="opencode"
+# shellcheck disable=SC2034
+CLI_INSTALLER="mise"
 
-if [[ -f ${RAVN_DIR}/framework/mise-cli.sh ]]; then
-  # shellcheck disable=SC1091
-  source "${RAVN_DIR}/framework/mise-cli.sh"
-else
-  # shellcheck disable=SC1091
-  source /mise-cli.sh
-fi
-mise_cli_task
+ravn_cli_task

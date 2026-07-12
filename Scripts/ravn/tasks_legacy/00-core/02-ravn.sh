@@ -19,7 +19,7 @@ check() {
 install() {
   # Usar rama personalizada si se indica, de lo contrario por defecto la actual o 'master'
   local default_branch
-  default_branch=$(git -C "${scrDir:-$(dirname "$(realpath "$0")")}" branch --show-current 2> /dev/null || echo "master")
+  default_branch=$(git -C "${scrDir:-$(dirname "$(realpath "$0")")}" branch --show-current 2>/dev/null || echo "master")
   local ravn_ref="${RAVN_REF:-$default_branch}"
   # Usar repositorio personalizado si se especifica, de lo contrario por defecto 'robert-flo/RaVN'
   local ravn_repo="${RAVN_REPO:-robert-flo/RaVN}"

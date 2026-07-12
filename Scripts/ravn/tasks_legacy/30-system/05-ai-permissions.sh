@@ -54,7 +54,7 @@ install() {
   # 2. Create polkit rules
   info "Creando reglas de Polkit en /etc/polkit-1/rules.d/99-wheel-nopasswd.rules..."
   sudo mkdir -p /etc/polkit-1/rules.d
-  sudo tee /etc/polkit-1/rules.d/99-wheel-nopasswd.rules > /dev/null << 'EOF'
+  sudo tee /etc/polkit-1/rules.d/99-wheel-nopasswd.rules >/dev/null <<'EOF'
 /* Allow wheel users to execute commands without password */
 polkit.addRule(function(action, subject) {
   if (subject.isInGroup("wheel")) {
@@ -72,7 +72,7 @@ EOF
   # 3. Create sudoers override
   info "Configurando excepciones de sudo en /etc/sudoers.d/99-ai-tools..."
   sudo mkdir -p /etc/sudoers.d
-  sudo tee /etc/sudoers.d/99-ai-tools > /dev/null << 'EOF'
+  sudo tee /etc/sudoers.d/99-ai-tools >/dev/null <<'EOF'
 # Keep important environment variables
 Defaults env_keep += "SSH_AUTH_SOCK"
 Defaults env_keep += "NIX_PATH"
@@ -94,11 +94,11 @@ EOF
   sudo chmod 0440 /etc/sudoers.d/99-ai-tools
 
   info "Configurando excepciones de sudo para hermes en /etc/sudoers.d/hermes-nopasswd..."
-  sudo tee /etc/sudoers.d/hermes-nopasswd > /dev/null << 'EOF'
+  sudo tee /etc/sudoers.d/hermes-nopasswd >/dev/null <<'EOF'
 dominus ALL=(ALL) NOPASSWD: ALL
 EOF
   sudo chmod 0440 /etc/sudoers.d/hermes-nopasswd
-  if ! sudo visudo -c -f /etc/sudoers.d/hermes-nopasswd > /dev/null 2>&1; then
+  if ! sudo visudo -c -f /etc/sudoers.d/hermes-nopasswd >/dev/null 2>&1; then
     error_msg "Error de sintaxis en /etc/sudoers.d/hermes-nopasswd. Revirtiendo..."
     sudo rm -f /etc/sudoers.d/hermes-nopasswd
     return 1
@@ -107,7 +107,7 @@ EOF
   # 4. Create systemd limits
   info "Configurando DefaultTasksMax=infinity en /etc/systemd/system.conf.d/99-limits.conf..."
   sudo mkdir -p /etc/systemd/system.conf.d
-  sudo tee /etc/systemd/system.conf.d/99-limits.conf > /dev/null << 'EOF'
+  sudo tee /etc/systemd/system.conf.d/99-limits.conf >/dev/null <<'EOF'
 [Manager]
 DefaultTasksMax=infinity
 EOF
@@ -115,7 +115,7 @@ EOF
   # 5. Create user@ service override
   info "Configurando override para user@.service..."
   sudo mkdir -p /etc/systemd/system/user@.service.d
-  sudo tee /etc/systemd/system/user@.service.d/override.conf > /dev/null << 'EOF'
+  sudo tee /etc/systemd/system/user@.service.d/override.conf >/dev/null <<'EOF'
 [Service]
 Delegate=yes
 PrivateDevices=no

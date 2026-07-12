@@ -12,6 +12,7 @@ source "${RAVN_DIR}/framework/state.sh"
 
 ravn_state_is_valid verified
 ravn_state_is_valid rollback-failed
+ravn_state_is_valid unsupported
 if ravn_state_is_valid invalid; then
   printf 'FAIL: invalid state accepted\n' >&2
   exit 1
@@ -22,7 +23,7 @@ if ravn_record_task_evidence opencode verify invalid 1; then
 fi
 
 log_file="${XDG_STATE_HOME}/test.log"
-printf '%s\n' 'API_KEY=super-secret' 'Authorization: Bearer token-value' > "$log_file"
+printf '%s\n' 'API_KEY=super-secret' 'Authorization: Bearer token-value' >"$log_file"
 ravn_redact_log "$log_file"
 grep -Fq 'API_KEY=[REDACTED]' "$log_file"
 grep -Fq 'Bearer [REDACTED]' "$log_file"

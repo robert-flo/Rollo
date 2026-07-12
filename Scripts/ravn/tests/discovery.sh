@@ -12,10 +12,12 @@ source "${RAVN_DIR}/framework/package.sh"
 source "${RAVN_DIR}/framework/discover.sh"
 
 discover_tasks
-[[ ${#TASKS[@]} -eq 1 ]]
+[[ ${#TASKS[@]} -eq 13 ]]
 [[ $(printf '%s\n' "${TASKS[@]}" | grep -c '/00-core/' || true) -eq 0 ]]
 [[ $(printf '%s\n' "${TASKS[@]}" | grep -c '/30-system/' || true) -eq 0 ]]
-[[ $(printf '%s\n' "${TASKS[@]}" | grep -c '/10-npm-apps/' || true) -eq 1 ]]
+[[ $(printf '%s\n' "${TASKS[@]}" | grep -c '/10-npm-apps/' || true) -eq 8 ]]
+[[ $(printf '%s\n' "${TASKS[@]}" | grep -c '/20-curl-apps/' || true) -eq 1 ]]
+[[ $(printf '%s\n' "${TASKS[@]}" | grep -c '/30-github-apps/' || true) -eq 4 ]]
 if printf '%s\n' "${TASKS[@]}" | grep -q 'tasks_legacy'; then
   printf 'FAIL: legacy tasks were discovered\n' >&2
   exit 1

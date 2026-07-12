@@ -26,6 +26,9 @@ Guidance for any agent (or developer) working in the RaVN dotfiles repository. S
 ### Issue tracker
 
 GitHub Issues via `gh` CLI. External PRs are not triaged. See `docs/agents/issue-tracker.md`.
+When creating or renaming an issue, prefix its title with the issue number and a
+separator: `<number> - <descriptive title>` (for example, `51 - Migrate legacy
+Codex CLI task to canonical mise lifecycle`).
 
 ### Triage labels
 
@@ -167,6 +170,15 @@ shfmt -i 2 -sr -kp -ci -d Scripts/
   - **Scope**: this rule is specific to Waybar and its layouts. It does not extend to other visual surfaces (GTK themes, SDDM, cursors, etc.) unless stated elsewhere.
 
 ## Git Worktree Workflow (Development)
+
+### Issue completion cleanup
+
+After an issue is merged successfully into the base branch from which its
+worktree was created, the agent must verify that the issue is closed and then
+ask the user for explicit authorization before removing anything. With that
+authorization, remove the obsolete local and remote topic branch and remove
+the local issue worktree. Do not delete the base branch or its worktree, and do
+not perform cleanup after a failed, partial, or unverified merge.
 
 To protect the user's active system configurations from accidental resets or uncommitted code loss during development, and to maintain task isolation:
 
