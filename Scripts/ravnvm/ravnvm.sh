@@ -742,8 +742,8 @@ function recover_environment() {
 
   while ! validate_environment; do
     print_section "${ICON_DIAGNOSTIC_ERROR} Required dependencies missing"
-    echo "  ${ICON_UI_PACKAGE} 1  Install dependencies"
-    echo "  ${ICON_UI_CLOSE} q  Exit"
+    echo -e "  ${GREEN}1${NC}  ${ICON_UI_PACKAGE}  Install dependencies"
+    echo -e "  ${GREEN}q${NC}  ${ICON_UI_CLOSE}  Exit"
     echo ""
     read -r -p "Selection: " recovery_choice
 
@@ -771,13 +771,13 @@ function show_menu() {
   clear || true
   print_ravnvm_banner
   print_section "${ICON_UI_COMMAND} Choose an action"
-  echo -e "  ${ICON_UI_PLAY} ${GREEN}1${NC}  Run master branch"
-  echo -e "  ${ICON_UI_SAVE} ${GREEN}2${NC}  Run master branch with persistence"
-  echo -e "  ${ICON_UI_LIST} ${GREEN}3${NC}  List cached snapshots"
-  echo -e "  ${ICON_UI_TRASH} ${GREEN}4${NC}  Clean VM cache"
-  echo -e "  ${ICON_UI_TEST} ${GREEN}5${NC}  Check dependencies"
-  echo -e "  ${ICON_UI_PACKAGE} ${GREEN}6${NC}  Install dependencies"
-  echo -e "  ${ICON_UI_CLOSE} ${GREEN}q${NC}  Exit"
+  echo -e "  ${GREEN}1${NC}  ${ICON_UI_PLAY}  Run master branch"
+  echo -e "  ${GREEN}2${NC}  ${ICON_UI_SAVE}  Run master branch with persistence"
+  echo -e "  ${GREEN}3${NC}  ${ICON_UI_LIST}  List cached snapshots"
+  echo -e "  ${GREEN}4${NC}  ${ICON_UI_TRASH}  Clean VM cache"
+  echo -e "  ${GREEN}5${NC}  ${ICON_UI_TEST}  Check dependencies"
+  echo -e "  ${GREEN}6${NC}  ${ICON_UI_PACKAGE}  Install dependencies"
+  echo -e "  ${GREEN}q${NC}  ${ICON_UI_CLOSE}  Exit"
   echo ""
   read -r -p "Selection: " MENU_CHOICE
 }
@@ -799,15 +799,15 @@ function select_revision() {
   current_branch=$(get_current_branch)
 
   print_section "${ICON_GIT_BRANCH} Choose a RaVN revision"
-  echo "  ${ICON_GIT_BRANCH} 1  master"
-  echo "  ${ICON_GIT_BRANCH} 2  dev"
+  echo -e "  ${GREEN}1${NC}  ${ICON_GIT_BRANCH}  master"
+  echo -e "  ${GREEN}2${NC}  ${ICON_GIT_BRANCH}  dev"
   if [[ -n $current_branch && $current_branch != "master" && $current_branch != "dev" ]]; then
-    echo "  ${ICON_GIT_BRANCH} 3  $current_branch (current branch)"
+    echo -e "  ${GREEN}3${NC}  ${ICON_GIT_BRANCH}  $current_branch (current branch)"
   else
-    echo "  ${ICON_GIT_BRANCH} 3  Current branch"
+    echo -e "  ${GREEN}3${NC}  ${ICON_GIT_BRANCH}  Current branch"
   fi
-  echo "  ${ICON_UI_SEARCH} 4  Other branch or commit"
-  echo "  ${ICON_UI_ARROW_LEFT} q  Back"
+  echo -e "  ${GREEN}4${NC}  ${ICON_UI_SEARCH}  Other branch or commit"
+  echo -e "  ${GREEN}q${NC}  ${ICON_UI_ARROW_LEFT}  Back"
   echo ""
   read -r -p "Revision: " revision_choice
 
