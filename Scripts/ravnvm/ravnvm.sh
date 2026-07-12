@@ -771,13 +771,13 @@ function show_menu() {
   clear || true
   print_ravnvm_banner
   print_section "${ICON_UI_COMMAND} Choose an action"
-  echo "  ${ICON_UI_PLAY} 1  Run master branch"
-  echo "  ${ICON_UI_SAVE} 2  Run master branch with persistence"
-  echo "  ${ICON_UI_LIST} 3  List cached snapshots"
-  echo "  ${ICON_UI_TRASH} 4  Clean VM cache"
-  echo "  ${ICON_UI_TEST} 5  Check dependencies"
-  echo "  ${ICON_UI_PACKAGE} 6  Install dependencies"
-  echo "  ${ICON_UI_CLOSE} q  Exit"
+  echo -e "  ${ICON_UI_PLAY} ${GREEN}1${NC}  Run master branch"
+  echo -e "  ${ICON_UI_SAVE} ${GREEN}2${NC}  Run master branch with persistence"
+  echo -e "  ${ICON_UI_LIST} ${GREEN}3${NC}  List cached snapshots"
+  echo -e "  ${ICON_UI_TRASH} ${GREEN}4${NC}  Clean VM cache"
+  echo -e "  ${ICON_UI_TEST} ${GREEN}5${NC}  Check dependencies"
+  echo -e "  ${ICON_UI_PACKAGE} ${GREEN}6${NC}  Install dependencies"
+  echo -e "  ${ICON_UI_CLOSE} ${GREEN}q${NC}  Exit"
   echo ""
   read -r -p "Selection: " MENU_CHOICE
 }
