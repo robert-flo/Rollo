@@ -190,9 +190,10 @@ To protect the user's active system configurations from accidental resets or unc
 
 - **Isolated Development in `~/Work`**: All active development work must be carried out inside worktrees under `~/Work/<repo>/` (which are created from the bare repository at `~/.local/share/git-bare/<repo>`).
 - **No Direct Modification in Live Clone**: Do not perform development or commit changes directly inside the live configuration clone located at `~/.local/share/ravn/` (except when updating tracking config files or executing system-wide scripts).
-- **Automation Utilities** (all restored under `~/.local/bin/` — see "Repository Structure & Purpose" for their source in `Configs/.local/bin/`):
-  - `git-create-worktree` for general feature/chore branches.
-  - `git-issue-worktree` for GitHub-tracked issues.
+- **Automation Utilities**: the worktree helpers are available in `PATH`.
+  - **MANDATORY**: use `git-create-worktree` for general feature/chore branches.
+  - **MANDATORY**: use `git-issue-worktree` for GitHub-tracked issues.
+  - Do not create worktrees with raw `git worktree` commands or other ad-hoc procedures.
   - > [!IMPORTANT]
     > **MANDATORY**: `git-bare-clone` must always be used to create bare repositories (whether invoked via a `make` target or manually) — never create a bare repo with raw `git` commands. This is a recurring compliance gap: agents have created bare repos manually instead of using this script.
 - **Workflow Benefit**: Developing under `~/Work` isolates development changes from host configuration restoration processes. This eliminates the need to manually disable ravn tracking (e.g. setting `ravn=false` in `Scripts/ravn/config/packages.conf`) to protect local changes from being overwritten during installer or `restore_cfg.sh` runs.
@@ -343,8 +344,8 @@ This is the official main flow of the Matt Pocock skills (per `ask-matt`'s routi
 
 ### Phase 1 — Environment & Task Setup
 
-1. **Create an isolated issue worktree** whenever the user activates `/implement` for a GitHub issue. Use `/home/ravn/.local/bin/git-issue-worktree` with the issue number, a descriptive slug, the active repository path, and the current base branch. The worktree must be created from the branch being developed at that moment (currently `RaVN-VM_Refactor`), not automatically from `main` or `dev`.
-   - Example: `/home/ravn/.local/bin/git-issue-worktree -r /home/ravn/Work/Rollo/RaVN-VM_Refactor -B RaVN-VM_Refactor <issue> <slug>`.
+1. **Create an isolated issue worktree** whenever the user activates `/implement` for a GitHub issue. Use `git-issue-worktree` with the issue number, a descriptive slug, the active repository path, and the current base branch. The worktree must be created from the branch being developed at that moment (currently `RaVN-VM_Refactor`), not automatically from `main` or `dev`.
+   - Do not replace `git-issue-worktree` with a raw `git worktree` command or an absolute path to the helper.
    - Record the base branch before implementation begins; that exact branch is the merge target later.
    - Do not implement or commit the issue directly in the base worktree.
 2. **Determine the best implementation approach** for the requested task. When feasible, prefer creating a task module under `Scripts/ravn/tasks/<category>/<NN>-<name>.sh` following the module contract (see [Scripts/ravn/AGENTS.md](Scripts/ravn/AGENTS.md) § Adding a task module); otherwise choose the most appropriate mechanism (script, config edit, migration, etc.).
