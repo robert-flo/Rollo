@@ -138,6 +138,12 @@ implementation. A new administrative task is incomplete until its lifecycle
 matrix covers clean, existing, malformed, conflicting, partial, rollback,
 reset, idempotence, and reinstall behavior.
 
+The SSH reference also has a dedicated Docker regression test at
+`tests/03-ssh-config-docker.sh`. Run it when changing the SSH task; it verifies
+the effective parser result, permissions, unmanaged-content preservation,
+idempotence, reset, and rollback in an Arch container without touching the
+host HOME.
+
 The shared backend populates the task metadata and lifecycle functions. A
 canonical task must therefore be executable without shell initialization and
 must not open a TUI or prompt for credentials.
