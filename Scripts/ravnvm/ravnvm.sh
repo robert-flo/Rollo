@@ -599,6 +599,7 @@ function show_storage_status() {
   local filesystem_used="0"
   local filesystem_available="0"
   local filesystem_percent="0"
+  local storage_status=""
 
   cache_bytes=$(du -s -B1 "$CACHE_DIR" 2> /dev/null | awk '{print $1}' || echo "0")
   read -r filesystem_total filesystem_used filesystem_available filesystem_percent < <(
@@ -608,7 +609,15 @@ function show_storage_status() {
     }'
   ) || true
 
-  print_section "${ICON_UI_STORAGE}Storage"
+  if ((filesystem_percent >= 90)); then
+    storage_status="${RED}${ICON_DIAGNOSTIC_ERROR} Critical${NC}"
+  elif ((filesystem_percent >= 80)); then
+    storage_status="${YELLOW}${ICON_DIAGNOSTIC_WARNING} High usage${NC}"
+  else
+    storage_status="${GREEN}${ICON_CHECK} Available${NC}"
+  fi
+
+  print_section "${ICON_UI_STORAGE} Storage ${storage_status}"
   print_info "${ICON_UI_DATABASE} VM cache: $(format_bytes "$cache_bytes")"
   print_info "${ICON_UI_STORAGE} Disk: $(format_bytes "$filesystem_used") used / $(format_bytes "$filesystem_total") (${filesystem_percent}%)"
   print_info "${ICON_UI_DOWNLOAD} Free: $(format_bytes "$filesystem_available")"
@@ -617,8 +626,6 @@ function show_storage_status() {
     print_error "Storage critically low; clean old VM snapshots before continuing"
   elif ((filesystem_percent >= 80)); then
     print_warn "Storage usage is high; review VM snapshots before creating another"
-  else
-    print_success "Storage available"
   fi
 }
 
