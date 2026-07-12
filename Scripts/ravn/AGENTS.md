@@ -44,6 +44,28 @@ Options must precede the issue number. This repository uses `origin/dev`, not
 Do not commit directly to `dev`; use the issue worktree, then push a branch and
 merge through a pull request.
 
+## Unified CLI task shape
+
+Every canonical CLI task uses one public entrypoint and declares its backend
+explicitly:
+
+```bash
+# shellcheck disable=SC2034
+CLI_COMMAND="tool"
+# shellcheck disable=SC2034
+CLI_INSTALLER="mise" # or upstream
+
+ravn_cli_task
+```
+
+Mise tasks additionally declare `CLI_PACKAGE`. Upstream tasks declare
+`CLI_INSTALL_URL`, `CLI_VERSION_ARGS`, and provider-specific update fields such
+as `CLI_UPDATE_CHECK_ARGS`, `CLI_UPDATE_ARGS`, and `CLI_INSTALL_DIR_ENV`.
+Backend-specific fields remain explicit; only backend dispatch is hidden.
+
+The task author must not call `ravn_mise_cli_task` or `ravn_upstream_task`
+directly in a canonical CLI descriptor.
+
 ## Canonical npm CLI task shape
 
 For a versioned npm CLI, the task file should contain only the CLI-specific
