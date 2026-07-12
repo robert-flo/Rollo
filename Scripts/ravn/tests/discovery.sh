@@ -18,7 +18,8 @@ discover_tasks
 [[ $(printf '%s\n' "${TASKS[@]}" | grep -c '/10-npm-apps/' || true) -eq 8 ]]
 [[ $(printf '%s\n' "${TASKS[@]}" | grep -c '/20-curl-apps/' || true) -eq 1 ]]
 [[ $(printf '%s\n' "${TASKS[@]}" | grep -c '/30-github-apps/' || true) -eq 4 ]]
-[[ $(printf '%s\n' "${TASKS[@]}" | grep -c '/20-shell/' || true) -eq 1 ]]
+[[ $(printf '%s\n' "${TASKS[@]}" | grep -c '/20-shell/' || true) -eq 0 ]]
+[[ $(printf '%s\n' "${TASKS[@]}" | grep -c '/90-system/' || true) -eq 1 ]]
 if printf '%s\n' "${TASKS[@]}" | grep -q 'tasks_legacy'; then
   printf 'FAIL: legacy tasks were discovered\n' >&2
   exit 1
