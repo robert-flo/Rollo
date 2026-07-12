@@ -623,14 +623,14 @@ function print_ravnvm_banner() {
   │  ██████╗  █████╗ ██╗   ██╗███╗   ██╗               │
   │  ██╔══██╗██╔══██╗██║   ██║████╗  ██║               │
   │  ██████╔╝███████║██║   ██║██╔██╗ ██║               │
-  │  ██╔══██╗██╔══██║╚██╗ ██╔╝██║╚██╗ ██║              │
+  │  ██╔══██╗██╔══██║╚██╗ ██╔╝██║╚██╗██║               │
   │  ██║  ██║██║  ██║ ╚████╔╝ ██║ ╚████║               │
   │  ╚═╝  ╚═╝╚═╝  ╚═╝  ╚═══╝  ╚═╝  ╚═══╝               │
   │                                                    │
-  │       RavnVM — QEMU/KVM Development Environment   │
+  │       RavnVM — QEMU/KVM Development Environment    │
   │                                                    │
 BANNER_EOF
-  echo -e "  │       ${GRAY}by Roberto Flores ${WHITE}@robert-flo${CYAN}          │"
+  echo -e "  │       ${GRAY}by Roberto Flores ${WHITE}@robert-flo${CYAN}                │"
   cat << 'BANNER_EOF'
   │                                                    │
   ╰────────────────────────────────────────────────────╯
