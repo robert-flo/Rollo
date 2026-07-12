@@ -17,6 +17,7 @@ Use the existing category that matches the responsibility:
 
 - `tasks/10-npm-apps/` — npm CLIs and npm-backed application tools.
 - `tasks/20-curl-apps/` — vendor shell installers downloaded over HTTPS.
+- `tasks/30-github-apps/` — tools distributed from GitHub and managed by mise.
 - `tasks/20-shell/` — shell tools and shell configuration tasks.
 - Add a new category only when an existing category cannot express the task;
   document the new category here and update discovery tests.

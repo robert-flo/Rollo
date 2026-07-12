@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Lifecycle contract for tasks/20-curl-apps/19-herdr.sh
+# Lifecycle contract for tasks/30-github-apps/19-herdr.sh
 set -euo pipefail
 
 RAVN_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -46,11 +46,12 @@ version_before=$(herdr_version_id)
 "$HERDR_CMD" --version >/dev/null
 
 TASK_RESULTS=()
-if run_selected_tasks check-updates "$TASK_SELECTOR"; then
-  printf 'FAIL: herdr check-updates should be unsupported\n' >&2
+TASK_RESULTS=()
+run_selected_tasks check-updates "$TASK_SELECTOR"
+[[ ${TASK_RESULTS[0]} == "herdr:up-to-date" || ${TASK_RESULTS[0]} == "herdr:update-available" ]] || {
+  printf 'FAIL: unexpected herdr check-updates result: %s\n' "${TASK_RESULTS[0]:-}" >&2
   exit 1
-fi
-assert_result "herdr:unsupported"
+}
 
 TASK_RESULTS=()
 run_selected_tasks update "$TASK_SELECTOR"
