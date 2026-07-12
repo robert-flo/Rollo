@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -uo pipefail
 
 RAVN_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 root=$(mktemp -d "${TMPDIR:-/tmp}/ravn-snapd-test.XXXXXX")
@@ -18,7 +18,7 @@ EOF
 
 cat > "$fake_bin/pacman" << 'EOF'
 #!/usr/bin/env bash
-set -euo pipefail
+set -uo pipefail
 state_file="${RAVN_SNAPD_PKGS_STATE:?}"
 case "${1:-}" in
   -Q)
@@ -37,7 +37,7 @@ EOF
 
 cat > "$fake_bin/systemctl" << 'EOF'
 #!/usr/bin/env bash
-set -euo pipefail
+set -uo pipefail
 state_file="${RAVN_SNAPD_SVCS_STATE:?}"
 _svc() {
   local svc=""
