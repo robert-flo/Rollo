@@ -12,6 +12,22 @@ _Avoid_: new helper, preferred helper
 The unchanged `Scripts/global_fn.sh` implementation used as the compatibility reference during side-by-side validation.
 _Avoid_: old helper, secondary helper
 
+**Baseline implementation**:
+The unchanged legacy installation flow used as the behavioral reference during migration.
+_Avoid_: old script, deprecated implementation
+
+**Candidate implementation**:
+The new RaVN task flow evaluated against the baseline implementation before it is allowed to replace the legacy integration.
+_Avoid_: replacement script, experimental script
+
+**Migration orchestrator**:
+The first candidate task that coordinates the complete dotfiles installation flow end to end while preserving explicit stage boundaries for later extraction.
+_Avoid_: package task, monolithic script
+
+**Stage boundary**:
+An observable transition in the installation flow with declared inputs, outputs, authority, failure behavior, and verification evidence.
+_Avoid_: arbitrary function, shell section
+
 **Semantic equivalence**:
 Preservation of the same observable events, ordering, return statuses, exported state, simulated effects, warnings, and errors, while allowing intentional visual differences.
 _Avoid_: textual equality, identical output
@@ -23,6 +39,10 @@ _Avoid_: manual comparison, visual test only
 **Sandboxed comparison**:
 A side-by-side validation run whose helpers, script copies, home directory, caches, bare repositories, and worktrees are isolated in a temporary directory.
 _Avoid_: live test, direct system test
+
+**Visual-equivalence exception**:
+A deliberate difference in banners, colors, spacing, wording, timestamps, or other presentation details that does not change semantic behavior.
+_Avoid_: tolerated regression, output mismatch
 
 ## Scope Boundaries
 
