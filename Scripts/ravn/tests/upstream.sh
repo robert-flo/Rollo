@@ -20,6 +20,7 @@ cat >"$fixture_script" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 mkdir -p "$UPSTREAM_INSTALL_DIR"
+printf '%s\n' "$*" > "${UPSTREAM_INSTALL_DIR}/install-args"
 cat >"${UPSTREAM_INSTALL_DIR}/${UPSTREAM_COMMAND}" <<'COMMAND'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -55,10 +56,15 @@ UPSTREAM_UPDATE_CHECK_ARGS=(update --check)
 # shellcheck disable=SC2034
 UPSTREAM_UPDATE_ARGS=(update)
 # shellcheck disable=SC2034
+UPSTREAM_INSTALL_ARGS=(--dir "${XDG_DATA_HOME}/custom-install")
+# shellcheck disable=SC2034
 RAVN_UPSTREAM_CURL_BIN="$fake_curl"
 upstream_task
 
+[[ ${UPSTREAM_INSTALL_ARGS[*]} == "--dir ${XDG_DATA_HOME}/custom-install" ]]
+
 install
+[[ $(<"${UPSTREAM_INSTALL_DIR}/install-args") == "--dir ${XDG_DATA_HOME}/custom-install" ]]
 verify
 [[ $RAVN_EVIDENCE_RESOLVED_VERSION == "1.0.0" ]]
 [[ -n $RAVN_EVIDENCE_UPSTREAM_SHA256 ]]
