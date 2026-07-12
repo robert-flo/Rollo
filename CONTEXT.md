@@ -155,6 +155,34 @@ A future test adapter that runs tasks or complete revisions inside a virtual
 machine; it is outside the current suite-scope design increment.
 _Avoid_: Docker replacement, VM mode
 
+**RavnVM development session**:
+A developer-controlled QEMU/KVM environment provisioned to inspect and test one specified RaVN branch or commit, with optional persistence for interactive investigation.
+_Avoid_: task runner, CI runner, generic scenario runner
+
+**Test revision**:
+The exact RaVN branch or commit selected as the subject of a RavnVM development session.
+_Avoid_: latest code, current checkout
+
+**Pre-integration validation**:
+The developer practice of exercising a feature branch or commit in RavnVM so its behavior can be inspected before the change is integrated into `dev`.
+_Avoid_: CI approval, post-merge testing
+
+**RavnVM interactive menu**:
+The no-argument user interface for selecting an existing RavnVM operation while preserving direct invocation through the current positional arguments and flags.
+_Avoid_: replacement CLI, task menu, scenario runner
+
+**RavnVM interaction surface**:
+An entrypoint through which a developer starts or inspects a RavnVM development session: direct CLI invocation, the interactive menu, or the repository's `make` development targets.
+_Avoid_: separate VM implementation, task runner
+
+**Make VM interface**:
+The existing `make/dev.mk` targets that expose RavnVM operations through `make`, including branch/commit selection via `REF`, resource overrides, persistence, dry-run, snapshot management, dependency setup, and disk inspection.
+_Avoid_: make backend, alternate VM engine
+
+**Graceful abort**:
+The controlled termination of the current RavnVM operation after an error or edge case, preserving diagnostic evidence, cleaning up owned temporary resources, and returning control without hiding the failure.
+_Avoid_: silent recovery, forced exit, best-effort continuation
+
 **Activation boundary**:
 The event or action required before an applied change becomes effective, such
 as a reboot, new login session, daemon reload, or network reconnection.
