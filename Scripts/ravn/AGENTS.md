@@ -114,6 +114,28 @@ in the issue before introducing a custom implementation.
 
 ## Task contract and ownership
 
+### Administrative Testability Contract (mandatory)
+
+Every canonical administrative task must declare `ADMIN_TASK_ID`,
+`ADMIN_EXECUTION_PROFILE`, `ADMIN_REQUIRES_PRIVILEGE`, owned resources and
+conflicts, capabilities, reversibility, activation boundary, postconditions,
+evidence scope, and test level. It must expose read-only `admin_plan`,
+authorized `admin_apply`, observable `admin_verify`, and an honest recovery or
+reset hook. Do not use opaque `eval`, undeclared elevation, whole-file claims,
+or success based only on a process exit code.
+
+The required progression is isolated first, then Docker evidence, then host
+validation only when the task explicitly supports it. Host mode must require
+an explicit `--host` selector, `--approve`, and non-interactive authorization;
+it must preflight resources and permissions, verify a recoverable backup, and
+write reconciliation evidence separately from isolated results. Failed host
+verification must remain unsuccessful and include recovery instructions.
+
+Use `03-ssh-config.sh` and `03-ssh-config-lifecycle.sh` as the reference
+implementation. A new administrative task is incomplete until its lifecycle
+matrix covers clean, existing, malformed, conflicting, partial, rollback,
+reset, idempotence, and reinstall behavior.
+
 The shared backend populates the task metadata and lifecycle functions. A
 canonical task must therefore be executable without shell initialization and
 must not open a TUI or prompt for credentials.
