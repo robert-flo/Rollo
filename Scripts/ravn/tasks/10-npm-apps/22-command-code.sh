@@ -4,6 +4,6 @@
 # shellcheck disable=SC2034
 CLI_PACKAGE="command-code"
 # shellcheck disable=SC2034
-CLI_COMMAND="command-code"
+CLI_COMMAND="cmd"
 
 ravn_mise_cli_task
