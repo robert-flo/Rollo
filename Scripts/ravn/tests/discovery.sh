@@ -12,15 +12,16 @@ source "${RAVN_DIR}/framework/package.sh"
 source "${RAVN_DIR}/framework/discover.sh"
 
 discover_tasks
-[[ ${#TASKS[@]} -eq 13 ]]
+[[ ${#TASKS[@]} -eq 14 ]]
 [[ $(printf '%s\n' "${TASKS[@]}" | grep -c '/00-core/' || true) -eq 0 ]]
 [[ $(printf '%s\n' "${TASKS[@]}" | grep -c '/30-system/' || true) -eq 0 ]]
 [[ $(printf '%s\n' "${TASKS[@]}" | grep -c '/10-npm-apps/' || true) -eq 8 ]]
 [[ $(printf '%s\n' "${TASKS[@]}" | grep -c '/20-curl-apps/' || true) -eq 1 ]]
 [[ $(printf '%s\n' "${TASKS[@]}" | grep -c '/30-github-apps/' || true) -eq 4 ]]
+[[ $(printf '%s\n' "${TASKS[@]}" | grep -c '/20-shell/' || true) -eq 1 ]]
 if printf '%s\n' "${TASKS[@]}" | grep -q 'tasks_legacy'; then
   printf 'FAIL: legacy tasks were discovered\n' >&2
   exit 1
 fi
 
-printf 'PASS: active task discovery contains only canonical npm tasks\n'
+printf 'PASS: active task discovery contains only canonical tasks\n'
