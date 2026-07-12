@@ -28,6 +28,7 @@ assert_contains() {
 mkdir -p "$FAKE_BIN"
 touch "$FAKE_BIN/qemu-system-x86_64" "$FAKE_BIN/qemu-img"
 chmod +x "$FAKE_BIN/qemu-system-x86_64" "$FAKE_BIN/qemu-img"
+ln -s /usr/bin/true "$FAKE_BIN/ssh"
 export PATH="$FAKE_BIN:$PATH"
 export XDG_CACHE_HOME="$FIXTURE_DIR/cache"
 
@@ -38,6 +39,7 @@ assert_contains "$menu_output" "Run dev branch"
 assert_contains "$menu_output" "Run current branch"
 assert_contains "$menu_output" "Run other branch or commit"
 assert_contains "$menu_output" "Show RavnVM usage"
+assert_contains "$menu_output" "Connect to VM via SSH"
 assert_contains "$menu_output" "Goodbye!"
 
 invalid_output=$(printf 'x\n\nq\n' | "$RAVNVM_SCRIPT")
@@ -97,6 +99,9 @@ assert_contains "$menu_help_output" "Usage: ravnvm [OPTIONS] [BRANCH/COMMIT]"
 assert_contains "$menu_help_output" "VM_MEMORY=4G"
 assert_contains "$menu_help_output" "VM_QEMU_OVERRIDE"
 assert_contains "$menu_help_output" "NixOS: automatically installs dependencies"
+
+ssh_menu_output=$(printf '10\n\nq\n' | "$RAVNVM_SCRIPT")
+assert_contains "$ssh_menu_output" "Connect to VM via SSH"
 
 make_output=$(make -s DRY_RUN=1 dev-vm REF=dev)
 assert_contains "$make_output" "ravnvm.sh dev"
