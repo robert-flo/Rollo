@@ -846,6 +846,8 @@ function run_interactive_menu() {
 check_root
 
 if [[ $# -eq 0 ]]; then
+    clear || true
+    print_header "${ICON_UI_TERMINAL} RavnVM — Development VM"
     if ! recover_environment; then
         print_info "RavnVM closed without starting a VM"
         exit 0
