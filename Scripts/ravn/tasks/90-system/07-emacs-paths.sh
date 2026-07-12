@@ -21,7 +21,7 @@ ADMIN_REVERSIBILITY="reversible"
 # shellcheck disable=SC2034
 ADMIN_ACTIVATION_BOUNDARY="next Emacs session"
 # shellcheck disable=SC2034
-ADMIN_TEST_LEVEL="isolated"
+ADMIN_TEST_LEVEL="isolated,docker"
 
 readonly EMACS_ORG_FILES=(
   "${HOME}/org/bookmarks.org"
