@@ -28,6 +28,7 @@ ravn/
 │   ├── 10-npm-apps/            # npm application configs + CLI tools
 │   ├── 20-curl-apps/           # HTTPS vendor shell-installer tasks
 │   ├── 20-shell/               # Shell environment modules (reserved)
+│   ├── 90-system/              # Final system configuration tasks
 │   └── tasks_legacy/           # Quarantined core, npm, and system tasks
 │
 ├── config/                     # Configuration files
