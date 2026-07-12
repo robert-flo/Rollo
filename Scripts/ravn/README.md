@@ -25,7 +25,8 @@ ravn/
 │   └── retry.sh                # Retry re-export from global_fn.sh
 │
 ├── tasks/                      # Installer modules (auto-discovered)
-│   ├── 10-npm-apps/            # npm application configs + CLI tools
+│   ├── 10-npm-apps/            # npm-backed CLI tools
+│   ├── 80-app-configs/         # application configuration trees + launchers
 │   ├── 20-curl-apps/           # HTTPS vendor shell-installer tasks
 │   ├── 20-shell/               # Shell environment modules (reserved)
 │   ├── 90-system/              # Final system configuration tasks

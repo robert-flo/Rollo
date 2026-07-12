@@ -15,7 +15,8 @@ discover_tasks
 [[ ${#TASKS[@]} -eq 15 ]]
 [[ $(printf '%s\n' "${TASKS[@]}" | grep -c '/00-core/' || true) -eq 0 ]]
 [[ $(printf '%s\n' "${TASKS[@]}" | grep -c '/30-system/' || true) -eq 0 ]]
-[[ $(printf '%s\n' "${TASKS[@]}" | grep -c '/10-npm-apps/' || true) -eq 9 ]]
+[[ $(printf '%s\n' "${TASKS[@]}" | grep -c '/10-npm-apps/' || true) -eq 8 ]]
+[[ $(printf '%s\n' "${TASKS[@]}" | grep -c '/80-app-configs/' || true) -eq 1 ]]
 [[ $(printf '%s\n' "${TASKS[@]}" | grep -c '/20-curl-apps/' || true) -eq 1 ]]
 [[ $(printf '%s\n' "${TASKS[@]}" | grep -c '/30-github-apps/' || true) -eq 4 ]]
 [[ $(printf '%s\n' "${TASKS[@]}" | grep -c '/20-shell/' || true) -eq 0 ]]
@@ -24,7 +25,7 @@ if printf '%s\n' "${TASKS[@]}" | grep -q 'tasks_legacy'; then
   printf 'FAIL: legacy tasks were discovered\n' >&2
   exit 1
 fi
-if ! printf '%s\n' "${TASKS[@]}" | grep -q '/10-npm-apps/04-nvim-custom-vims.sh'; then
+if ! printf '%s\n' "${TASKS[@]}" | grep -q '/80-app-configs/04-nvim-custom-vims.sh'; then
   printf 'FAIL: canonical nvim-custom-vims task was not discovered\n' >&2
   exit 1
 fi
