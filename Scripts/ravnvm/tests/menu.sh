@@ -60,11 +60,23 @@ assert_contains "$help_output" "Usage: ravnvm"
 
 snapshot_output=$("$RAVNVM_SCRIPT" --list)
 assert_contains "$snapshot_output" "Available RaVN snapshots"
+assert_contains "$snapshot_output" "No snapshots found"
+
+touch "$XDG_CACHE_HOME/ravnvm/archbase.qcow2"
+touch "$XDG_CACHE_HOME/ravnvm/snapshots/ravn-dev.qcow2"
+clean_output=$("$RAVNVM_SCRIPT" --clean)
+assert_contains "$clean_output" "base image preserved"
+[[ -f "$XDG_CACHE_HOME/ravnvm/archbase.qcow2" ]] || fail "clean removed the base image"
+[[ ! -e "$XDG_CACHE_HOME/ravnvm/snapshots/ravn-dev.qcow2" ]] || fail "clean retained a snapshot"
 
 storage_output=$(printf 'q\n' | "$RAVNVM_SCRIPT")
 assert_contains "$storage_output" "VM cache:"
 assert_contains "$storage_output" "Disk:"
 assert_contains "$storage_output" "Free:"
+
+storage_menu_output=$(printf '5\n\nq\n' | "$RAVNVM_SCRIPT")
+assert_contains "$storage_menu_output" "Storage"
+assert_contains "$storage_menu_output" "VM cache:"
 
 make_output=$(make -s DRY_RUN=1 dev-vm REF=dev)
 assert_contains "$make_output" "ravnvm.sh dev"
