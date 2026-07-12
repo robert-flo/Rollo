@@ -62,7 +62,12 @@ main() {
       return
     elif [[ $action == "matrix" ]]; then
       shift
-      bash "${RAVN_DIR}/tests/opencode-matrix.sh" "$@"
+      if [[ ${1:-} == "grok" ]]; then
+        shift
+        bash "${RAVN_DIR}/tests/grok-matrix.sh" "$@"
+      else
+        bash "${RAVN_DIR}/tests/opencode-matrix.sh" "$@"
+      fi
       return
     elif [[ $action == "reset" ]]; then
       shift

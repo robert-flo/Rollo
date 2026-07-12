@@ -201,6 +201,7 @@ bash Scripts/ravn/tests/state.sh
 bash Scripts/ravn/tests/mise.sh
 bash Scripts/ravn/tests/menu.sh
 bash Scripts/ravn/tests/opencode-contract.sh
+bash Scripts/ravn/tests/grok-matrix.sh contract
 bash Scripts/ravn/tests/dry-run.sh
 bash Scripts/ravn/tests/test-task-selection.sh
 ```
@@ -270,6 +271,7 @@ bash Scripts/ravn/setup.sh verify <command>
 bash Scripts/ravn/setup.sh check-updates <command>
 bash Scripts/ravn/setup.sh update <command>
 bash Scripts/ravn/setup.sh reset <command> --yes
+bash Scripts/ravn/setup.sh matrix grok contract
 ```
 
 In non-interactive environments (agents, CI, pipes without a TTY), `reset`
