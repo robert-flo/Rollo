@@ -24,6 +24,7 @@ upstream_task() {
 
   UPSTREAM_ROOT="$task_root"
   UPSTREAM_INSTALL_DIR="${UPSTREAM_INSTALL_DIR:-${task_root}/install}"
+  UPSTREAM_INSTALL_HOME="${UPSTREAM_INSTALL_HOME:-${task_root}/installer-home}"
   UPSTREAM_WRAPPER="${HOME}/.local/bin/${UPSTREAM_COMMAND}"
   UPSTREAM_SHELL="${UPSTREAM_INSTALL_SHELL:-bash}"
   if ! declare -p UPSTREAM_INSTALL_ARGS &>/dev/null; then
@@ -106,13 +107,18 @@ upstream_install_script() {
     return 1
   fi
 
-  mkdir -p "$UPSTREAM_INSTALL_DIR" || {
+  mkdir -p "$UPSTREAM_INSTALL_DIR" "$UPSTREAM_INSTALL_HOME" || {
     rm -rf "$script_dir"
     return 1
   }
-  if ! env HOME="$HOME" PATH="${UPSTREAM_INSTALL_DIR}:${HOME}/.local/bin:${PATH}" \
+  local install_env=()
+  if [[ -n ${UPSTREAM_INSTALL_DIR_ENV:-} ]]; then
+    install_env=("${UPSTREAM_INSTALL_DIR_ENV}=${UPSTREAM_INSTALL_DIR}")
+  fi
+  if ! env HOME="$UPSTREAM_INSTALL_HOME" PATH="${UPSTREAM_INSTALL_DIR}:${HOME}/.local/bin:${PATH}" \
     UPSTREAM_COMMAND="$UPSTREAM_COMMAND" \
     UPSTREAM_INSTALL_DIR="$UPSTREAM_INSTALL_DIR" \
+    "${install_env[@]}" \
     "$UPSTREAM_SHELL" "$script" "${UPSTREAM_INSTALL_ARGS[@]}"; then
     rm -rf "$script_dir"
     return 1

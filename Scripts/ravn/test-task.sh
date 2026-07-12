@@ -279,6 +279,7 @@ source "/hooks.sh" 2>/dev/null || true
 source "/contract.sh" 2>/dev/null || true
 source "/mise.sh" 2>/dev/null || true
 source "/mise-cli.sh" 2>/dev/null || true
+source "/upstream.sh" 2>/dev/null || true
 export RAVN_DIR="/"
 source "/task.sh" 2>/dev/null || true
 
@@ -347,6 +348,7 @@ EOF
     -v "$RAVN_DIR/framework/contract.sh:/contract.sh:ro" \
     -v "$RAVN_DIR/framework/mise.sh:/mise.sh:ro" \
     -v "$RAVN_DIR/framework/mise-cli.sh:/mise-cli.sh:ro" \
+    -v "$RAVN_DIR/framework/upstream.sh:/upstream.sh:ro" \
     -v "$test_script:/test.sh:ro" \
     "$DOCKER_IMAGE" bash /test.sh; then
     echo "✓ $package → PASÓ"

@@ -48,6 +48,23 @@ ravn_mise_cli_task() {
   mise_cli_task
 }
 
+ravn_source_upstream() {
+  local framework_path="${RAVN_DIR}/framework/upstream.sh"
+
+  if [[ -f $framework_path ]]; then
+    # shellcheck disable=SC1090
+    source "$framework_path"
+  else
+    # shellcheck disable=SC1091
+    source /upstream.sh
+  fi
+}
+
+ravn_upstream_task() {
+  ravn_source_upstream
+  upstream_task
+}
+
 # ─── Lifecycle hooks (no-op defaults) ────────────────────────────────────────
 # before  — Pre-install preparation (create dirs, fetch keys, etc.)
 # check   — Return 0 if the package is already installed/configured (skip).
