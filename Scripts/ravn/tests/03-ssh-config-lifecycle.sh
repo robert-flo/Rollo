@@ -62,6 +62,7 @@ run_case() {
 run_case missing
 run_case empty ''
 run_case existing $'Host preserved\n    HostName example.test\n# unmanaged content'
+run_case compatible $'Host ravnvm\n    HostName 127.0.0.1\n    Port 2222\n    User arch\n    StrictHostKeyChecking no\n    UserKnownHostsFile /dev/null'
 run_case malformed $'Host *\n    BadOption'
 run_case conflict $'Host ravnvm\n    HostName conflicting.test' conflict
 run_case partial '' verify-failure

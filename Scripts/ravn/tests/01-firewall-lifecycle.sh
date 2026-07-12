@@ -59,12 +59,18 @@ admin_apply
 admin_verify
 
 printf '53317/tcp ALLOW from existing-service\n' > "$state"
-if admin_plan; then
-  printf 'FAIL: unmanaged firewall rule was not detected\n' >&2
+admin_plan
+admin_apply
+admin_verify
+admin_reset
+grep -qF 'existing-service' "$state" || {
+  printf 'FAIL: equivalent existing firewall rule was removed\n' >&2
   exit 1
-fi
-if admin_reset; then
-  printf 'FAIL: reset ignored unmanaged-rule conflict\n' >&2
+}
+
+printf '53317/tcp DENY from conflicting-service\n' > "$state"
+if admin_plan; then
+  printf 'FAIL: conflicting firewall rule was not detected\n' >&2
   exit 1
 fi
 

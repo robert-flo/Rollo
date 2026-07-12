@@ -33,6 +33,11 @@ _ufw_active() {
 
 _ufw_rule_present() {
   local protocol="$1"
+  _ufw_status | grep -Eq "^${LOCAL_SEND_PORT}/${protocol}[[:space:]]+ALLOW([[:space:]]|$)"
+}
+
+_ufw_managed_rule_present() {
+  local protocol="$1"
   _ufw_status | grep -Eq "^${LOCAL_SEND_PORT}/${protocol}[[:space:]].*# ${LOCAL_SEND_RULE_COMMENT}$"
 }
 
@@ -44,7 +49,9 @@ _ufw_unmanaged_rule_present() {
 }
 
 _ufw_conflict() {
-  _ufw_unmanaged_rule_present tcp || _ufw_unmanaged_rule_present udp
+  _ufw_status |
+    grep -E "^${LOCAL_SEND_PORT}/(tcp|udp)[[:space:]]+" |
+    grep -qvE '[[:space:]]ALLOW([[:space:]]|$)'
 }
 
 admin_plan() {
@@ -77,13 +84,13 @@ admin_rollback() {
 
 admin_reset() {
   admin_plan || return 1
-  _ufw_rule_present tcp && sudo ufw delete allow "${LOCAL_SEND_PORT}/tcp" || true
-  _ufw_rule_present udp && sudo ufw delete allow "${LOCAL_SEND_PORT}/udp" || true
-  ! _ufw_rule_present tcp && ! _ufw_rule_present udp
+  _ufw_managed_rule_present tcp && sudo ufw delete allow "${LOCAL_SEND_PORT}/tcp" || true
+  _ufw_managed_rule_present udp && sudo ufw delete allow "${LOCAL_SEND_PORT}/udp" || true
+  ! _ufw_managed_rule_present tcp && ! _ufw_managed_rule_present udp
 }
 
 admin_verify_reset() {
-  ! _ufw_rule_present tcp && ! _ufw_rule_present udp
+  ! _ufw_managed_rule_present tcp && ! _ufw_managed_rule_present udp
 }
 
 check() { admin_verify; }

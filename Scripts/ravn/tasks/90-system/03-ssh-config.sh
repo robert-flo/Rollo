@@ -25,11 +25,23 @@ SSH_MARKER_START='# >>> ravn managed ssh-config >>>'
 SSH_MARKER_END='# <<< ravn managed ssh-config <<<'
 SSH_BACKUP="${SSH_CONFIG}.ravn-backup"
 
+_ravnvm_block_compatible() {
+  local block=""
+  block=$(awk '/^Host[[:space:]]+ravnvm([[:space:]]|$)/ {inside=1} inside {print} inside && NR > 1 && /^Host[[:space:]]/ && $0 !~ /^Host[[:space:]]+ravnvm([[:space:]]|$)/ {exit}' "$SSH_CONFIG")
+  [[ $block == *$'\n    HostName 127.0.0.1'* || $block == HostName\ 127.0.0.1* ]] &&
+    [[ $block == *$'\n    Port 2222'* ]] &&
+    [[ $block == *$'\n    User arch'* ]] &&
+    [[ $block == *$'\n    StrictHostKeyChecking no'* ]] &&
+    [[ $block == *$'\n    UserKnownHostsFile /dev/null'* ]]
+}
+
 admin_plan() {
   ADMIN_PLAN_ACTIONS=("ensure ~/.ssh/config permissions" "replace only the ravn managed section")
   if [[ -f $SSH_CONFIG ]]; then
     grep -q "$SSH_MARKER_START" "$SSH_CONFIG" && grep -q "$SSH_MARKER_END" "$SSH_CONFIG" || true
-    if grep -qE '^Host[[:space:]]+ravnvm([[:space:]]|$)' "$SSH_CONFIG" && ! grep -q "$SSH_MARKER_START" "$SSH_CONFIG"; then
+    if grep -qE '^Host[[:space:]]+ravnvm([[:space:]]|$)' "$SSH_CONFIG" &&
+      ! grep -q "$SSH_MARKER_START" "$SSH_CONFIG" &&
+      ! _ravnvm_block_compatible; then
       ADMIN_PLAN_CONFLICT="unmanaged Host ravnvm"
       return 1
     fi
@@ -37,7 +49,7 @@ admin_plan() {
 }
 
 admin_apply() {
-  local temp content
+  local temp content has_ravnvm=false
   mkdir -p "${HOME}/.ssh"
   chmod 700 "${HOME}/.ssh"
   if [[ -f $SSH_CONFIG ]]; then
@@ -49,6 +61,7 @@ admin_apply() {
     : > "$SSH_BACKUP"
     content=''
   fi
+  grep -qE '^Host[[:space:]]+ravnvm([[:space:]]|$)' "$SSH_CONFIG" 2> /dev/null && has_ravnvm=true
   temp=$(mktemp "${SSH_CONFIG}.tmp.XXXXXX")
   {
     [[ -z $content ]] || printf '%s\n' "$content"
@@ -56,6 +69,9 @@ admin_apply() {
     cat << 'EOF'
 Host *
     AddKeysToAgent yes
+EOF
+    if [[ $has_ravnvm == false ]]; then
+      cat << 'EOF'
 Host ravnvm
     HostName 127.0.0.1
     Port 2222
@@ -63,6 +79,7 @@ Host ravnvm
     StrictHostKeyChecking no
     UserKnownHostsFile /dev/null
 EOF
+    fi
     printf '%s\n' "$SSH_MARKER_END"
   } > "$temp"
   chmod 600 "$temp"
