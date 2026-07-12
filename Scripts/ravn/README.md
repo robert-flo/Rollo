@@ -188,6 +188,12 @@ report must identify partial state, the backup, the activation boundary, and
 the recovery action. A new SSH connection observes the effective configuration;
 existing sessions are not claimed to have changed.
 
+For the SSH reference task, run the dedicated Docker regression test as well:
+
+```bash
+bash Scripts/ravn/tests/03-ssh-config-docker.sh
+```
+
 Every canonical administrative task must provide a dedicated lifecycle test
 and declare identity, execution profile, privilege requirement, dependencies,
 ownership, capabilities, reversibility, activation boundary, postconditions,
