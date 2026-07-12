@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
 
+# shellcheck disable=SC1091
+if ! source "$(dirname "$(realpath "${BASH_SOURCE[0]}")")/../global_fn.sh"; then
+    echo "Error: unable to source global_fn.sh..." >&2
+    exit 1
+fi
+
 # RavnVM - Simplified VM tool for RaVN contributors
 # Works on both Arch Linux and NixOS with automatic OS detection
 
@@ -567,8 +573,87 @@ function clean_cache() {
     echo "✅ Cache cleaned"
 }
 
+function press_enter_to_continue() {
+  read -r -p "Press Enter to continue..." _
+}
+
+function show_menu() {
+  clear || true
+  print_header "RavnVM — Development VM"
+  print_section "Choose an action"
+  echo "  1  Run master branch"
+  echo "  2  Run master branch with persistence"
+  echo "  3  List cached snapshots"
+  echo "  4  Clean VM cache"
+  echo "  5  Check dependencies"
+  echo "  6  Install dependencies"
+  echo "  q  Exit"
+  echo ""
+  read -r -p "Selection: " MENU_CHOICE
+}
+
+function run_vm_command() {
+  local persistent_mode="${1:-false}"
+
+  if ! check_dependencies; then
+    return 1
+  fi
+
+  download_archbox
+  run_vm "master" "$persistent_mode"
+}
+
+function run_interactive_menu() {
+  local choice=""
+
+  while true; do
+    show_menu
+    choice="$MENU_CHOICE"
+
+    case "$choice" in
+    1)
+      run_vm_command false || true
+      press_enter_to_continue
+      ;;
+    2)
+      run_vm_command true || true
+      press_enter_to_continue
+      ;;
+    3)
+      list_snapshots || true
+      press_enter_to_continue
+      ;;
+    4)
+      clean_cache || true
+      press_enter_to_continue
+      ;;
+    5)
+      check_deps_only || true
+      press_enter_to_continue
+      ;;
+    6)
+      (install_all_arch_dependencies) || true
+      press_enter_to_continue
+      ;;
+    q | Q)
+      echo "Goodbye!"
+      return 0
+      ;;
+    *)
+      echo "Invalid option: $choice"
+      press_enter_to_continue
+      ;;
+    esac
+  done
+}
+
 # Main logic
 check_root
+
+if [[ $# -eq 0 ]]; then
+    run_interactive_menu
+    exit 0
+fi
 
 persistent="false"
 ref="master"
@@ -616,13 +701,13 @@ while [ $# -gt 0 ]; do
   esac
 done
 
-# Check dependencies before running
-if ! check_dependencies; then
-    exit 1
-fi
+run_vm_command_direct() {
+    if ! check_dependencies; then
+        return 1
+    fi
 
-# Ensure archbox is available
-download_archbox
+    download_archbox
+    run_vm "$ref" "$persistent"
+}
 
-# Run VM
-run_vm "$ref" "$persistent"
+run_vm_command_direct
