@@ -130,6 +130,9 @@ if [[ $verify_status == verified ]]; then
   admin_fixture_reset
   [[ ! -e ${ADMIN_OWNED_RESOURCES[0]} ]] || die "reset did not remove owned resource"
   printf 'Reset: verified\n'
+  admin_fixture_apply
+  admin_fixture_verify || die 'reinstall verification failed'
+  printf 'Reinstall: verified\n'
   exit 0
 fi
 exit 1
