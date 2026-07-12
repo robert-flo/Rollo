@@ -38,14 +38,6 @@ _pkg_installed() {
   _run_as_root pacman -Q "$1" > /dev/null 2>&1
 }
 
-_pkg_conflict_present() {
-  for pkg in "${CONFLICT_PKGS[@]}"; do
-    if _pkg_installed "$pkg"; then
-      return 0
-    fi
-  done
-  return 1
-}
 
 _admin_targets_missing() {
   for pkg in "${TARGET_PKGS[@]}"; do
