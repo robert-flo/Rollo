@@ -20,7 +20,7 @@ ADMIN_REVERSIBILITY="partially-reversible"
 # shellcheck disable=SC2034
 ADMIN_ACTIVATION_BOUNDARY="new session or systemctl daemon-reload"
 # shellcheck disable=SC2034
-ADMIN_TEST_LEVEL="isolated"
+ADMIN_TEST_LEVEL="isolated,docker"
 
 readonly DOCKER_PKGS=(docker docker-buildx docker-compose lazydocker ufw-docker)
 readonly DAEMON_JSON="/etc/docker/daemon.json"
