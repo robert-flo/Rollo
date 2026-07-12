@@ -669,6 +669,36 @@ function validate_environment() {
   return "$validation_failed"
 }
 
+function recover_environment() {
+  local recovery_choice=""
+
+  while ! validate_environment; do
+    print_section "${ICON_DIAGNOSTIC_ERROR} Required dependencies missing"
+    echo "  ${ICON_UI_PACKAGE} 1  Install dependencies"
+    echo "  ${ICON_UI_CLOSE} q  Exit"
+    echo ""
+    read -r -p "Selection: " recovery_choice
+
+    case "$recovery_choice" in
+      1)
+        if ! install_all_arch_dependencies; then
+          print_error "Dependency installation failed"
+          press_enter_to_continue
+        fi
+        ;;
+      q | Q)
+        return 1
+        ;;
+      *)
+        print_error "Choose Install dependencies or Exit"
+        press_enter_to_continue
+        ;;
+    esac
+  done
+
+  return 0
+}
+
 function show_menu() {
   clear || true
   print_header "${ICON_UI_TERMINAL} RavnVM — Development VM"
@@ -816,9 +846,9 @@ function run_interactive_menu() {
 check_root
 
 if [[ $# -eq 0 ]]; then
-    if ! validate_environment; then
-        print_error "Environment validation failed; RavnVM will not open the menu"
-        exit 1
+    if ! recover_environment; then
+        print_info "RavnVM closed without starting a VM"
+        exit 0
   fi
     run_interactive_menu
     exit 0
