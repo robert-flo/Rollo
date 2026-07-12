@@ -19,7 +19,7 @@ ADMIN_REVERSIBILITY="reversible"
 # shellcheck disable=SC2034
 ADMIN_ACTIVATION_BOUNDARY="new session or reboot"
 # shellcheck disable=SC2034
-ADMIN_TEST_LEVEL="isolated"
+ADMIN_TEST_LEVEL="isolated,docker"
 
 readonly SNAPD_PACKAGE="snapd"
 readonly APPARMOR_SERVICE="snapd.apparmor.service"
