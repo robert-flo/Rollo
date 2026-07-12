@@ -5,5 +5,7 @@
 CLI_PACKAGE="opencode-ai"
 # shellcheck disable=SC2034
 CLI_COMMAND="opencode"
+# shellcheck disable=SC2034
+CLI_INSTALLER="mise"
 
-ravn_mise_cli_task
+ravn_cli_task

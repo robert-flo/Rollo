@@ -65,6 +65,33 @@ ravn_upstream_task() {
   upstream_task
 }
 
+ravn_cli_task() {
+  case ${CLI_INSTALLER:-mise} in
+  mise)
+    ravn_mise_cli_task
+    ;;
+  upstream)
+    UPSTREAM_COMMAND="$CLI_COMMAND"
+    UPSTREAM_INSTALL_URL="$CLI_INSTALL_URL"
+    if declare -p CLI_VERSION_ARGS &>/dev/null; then
+      UPSTREAM_VERSION_ARGS=("${CLI_VERSION_ARGS[@]}")
+    fi
+    if declare -p CLI_UPDATE_CHECK_ARGS &>/dev/null; then
+      UPSTREAM_UPDATE_CHECK_ARGS=("${CLI_UPDATE_CHECK_ARGS[@]}")
+    fi
+    if declare -p CLI_UPDATE_ARGS &>/dev/null; then
+      UPSTREAM_UPDATE_ARGS=("${CLI_UPDATE_ARGS[@]}")
+    fi
+    UPSTREAM_INSTALL_DIR_ENV="${CLI_INSTALL_DIR_ENV:-}"
+    ravn_upstream_task
+    ;;
+  *)
+    printf 'Error: unsupported CLI installer: %s\n' "${CLI_INSTALLER}" >&2
+    return 1
+    ;;
+  esac
+}
+
 # ─── Lifecycle hooks (no-op defaults) ────────────────────────────────────────
 # before  — Pre-install preparation (create dirs, fetch keys, etc.)
 # check   — Return 0 if the package is already installed/configured (skip).
