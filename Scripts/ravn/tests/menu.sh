@@ -22,6 +22,10 @@ grep -q "Reset selected tasks" <<< "$output"
 grep -q "RaVN Task Runner" <<< "$output"
 grep -q "Choose an action" <<< "$output"
 grep -q "Exit" <<< "$output"
+if grep -Eiq 'deshabilitado|instalación|verificación|opción|cancelado|tarea no encontrada' <<< "$output"; then
+  printf 'FAIL: interactive menu exposed non-English text\n' >&2
+  exit 1
+fi
 
 # shellcheck disable=SC2329 # Invoked indirectly by read_task_runner_main_menu_choice.
 gum() {

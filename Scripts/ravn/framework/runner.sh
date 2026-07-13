@@ -60,7 +60,7 @@ resolve_task_files() {
   local -a selected=()
 
   if (($# == 0)); then
-    error_msg "Debe especificar una tarea o ALL."
+    error_msg "A task or ALL must be specified."
     return 1
   fi
 
@@ -75,7 +75,7 @@ resolve_task_files() {
     done
 
     if ((found == 0)) && [[ $selector != "BASELINE" ]]; then
-      error_msg "Tarea no encontrada: ${selector}"
+      error_msg "Task not found: ${selector}"
       return 1
     fi
   done
@@ -152,13 +152,13 @@ verify_selected_task() {
   _runner_log_dir
 
   if task_is_disabled "$name"; then
-    info "${name}: Deshabilitado."
+    info "${name}: Disabled."
     _runner_record "$name" "disabled"
     return 0
   fi
 
   if ! task_capability verify; then
-    warn_msg "${name}: Sin verify(); no se puede confirmar el postestado."
+    warn_msg "${name}: verify() is missing; the postcondition cannot be confirmed."
     _runner_record "$name" "unverified"
     return 1
   fi
@@ -166,7 +166,7 @@ verify_selected_task() {
   if verify >> "$log" 2>&1; then
     _runner_redact_log "$log"
     if ! _runner_record "$name" "verified"; then
-      error_msg "${name}: Verificado, pero no se pudo registrar la evidencia."
+      error_msg "${name}: Verified, but evidence could not be recorded."
       return 1
     fi
     success "${name}: Verificado."
@@ -174,7 +174,7 @@ verify_selected_task() {
   fi
 
   _runner_redact_log "$log"
-  error_msg "${name}: Verificación falló. Log: ${log}"
+  error_msg "${name}: Verification failed. Log: ${log}"
   if [[ ${RAVN_DEPENDENCY_MISSING:-false} == true ]]; then
     _runner_record "$name" "dependency-missing" 1
   else
@@ -197,7 +197,7 @@ run_selected_task() {
   _runner_log_dir
 
   if task_is_disabled "$name"; then
-    info "${name}: Deshabilitado."
+    info "${name}: Disabled."
     _runner_record "$name" "disabled"
     return 0
   fi
@@ -210,7 +210,7 @@ run_selected_task() {
 
   if ! install >> "$log" 2>&1; then
     _runner_redact_log "$log"
-    error_msg "${name}: Instalación falló. Log: ${log}"
+    error_msg "${name}: Installation failed. Log: ${log}"
     if [[ ${RAVN_DEPENDENCY_MISSING:-false} == true ]]; then
       _runner_record "$name" "dependency-missing" 1
     else
@@ -228,7 +228,7 @@ run_selected_task() {
   if verify >> "$log" 2>&1; then
     _runner_redact_log "$log"
     if ! _runner_record "$name" "verified"; then
-      error_msg "${name}: Instalado, pero no se pudo registrar la evidencia."
+      error_msg "${name}: Installed, but evidence could not be recorded."
       return 1
     fi
     success "${name}: Instalado y verificado."
@@ -236,7 +236,7 @@ run_selected_task() {
   fi
 
   _runner_redact_log "$log"
-  error_msg "${name}: Instalado, pero la verificación falló. Log: ${log}"
+  error_msg "${name}: Installed, but verification failed. Log: ${log}"
   _runner_record "$name" "failed" 1
   return 1
 }
@@ -255,7 +255,7 @@ check_updates_selected_task() {
   _runner_log_dir
 
   if ! task_capability check_updates; then
-    warn_msg "${name}: No soporta check-updates()."
+    warn_msg "${name}: check-updates() is unsupported."
     _runner_record "$name" "unverified" 1
     return 1
   fi
@@ -273,10 +273,10 @@ check_updates_selected_task() {
 
   _runner_redact_log "$log"
   if [[ ${RAVN_UPDATE_AVAILABLE:-false} == true ]]; then
-    info "${name}: Actualización disponible."
+    info "${name}: Update available."
     _runner_record "$name" "update-available"
   else
-    success "${name}: Ya está actualizado."
+    success "${name}: Already up to date."
     _runner_record "$name" "up-to-date"
   fi
 }
@@ -296,7 +296,7 @@ update_selected_task() {
   _runner_log_dir
 
   if ! task_capability update; then
-    warn_msg "${name}: No soporta update()."
+    warn_msg "${name}: update() is unsupported."
     _runner_record "$name" "unverified" 1
     return 1
   fi
@@ -305,12 +305,12 @@ update_selected_task() {
     _runner_redact_log "$log"
     if ! task_capability verify || ! verify >> "$log" 2>&1; then
       _runner_redact_log "$log"
-      error_msg "${name}: update() terminó, pero verify() falló. Log: ${log}"
+      error_msg "${name}: update() finished, but verify() failed. Log: ${log}"
       _runner_record "$name" "update-failed" 1
       return 1
     fi
     if ! _runner_record "$name" "verified"; then
-      error_msg "${name}: Actualizado, pero no se pudo registrar la evidencia."
+      error_msg "${name}: Updated, but evidence could not be recorded."
       return 1
     fi
     success "${name}: Actualizado y verificado."
@@ -323,7 +323,7 @@ update_selected_task() {
   elif [[ ${RAVN_UPDATE_RESULT:-} == "unsupported" ]]; then
     result="unsupported"
   fi
-  error_msg "${name}: Actualización falló (${result}). Log: ${log}"
+  error_msg "${name}: Update failed (${result}). Log: ${log}"
   _runner_record "$name" "$result" 1
   return 1
 }
@@ -362,7 +362,7 @@ test_selected_tasks() {
   local -a selectors=()
 
   if (($# == 0)); then
-    error_msg "Debe especificar una tarea o ALL."
+    error_msg "A task or ALL must be specified."
     return 1
   fi
 
@@ -391,7 +391,7 @@ reset_selected_task() {
   _runner_log_dir
 
   if ! task_capability reset || ! task_capability verify_reset; then
-    warn_msg "${name}: Reset no soportado; faltan reset() o verify_reset()."
+    warn_msg "${name}: Reset is unsupported; reset() or verify_reset() is missing."
     _runner_record "$name" "reset-unsupported"
     return 1
   fi
@@ -399,15 +399,15 @@ reset_selected_task() {
   if reset >> "$log" 2>&1 && verify_reset >> "$log" 2>&1; then
     _runner_redact_log "$log"
     if ! _runner_record "$name" "reset"; then
-      error_msg "${name}: Reset verificado, pero no se pudo registrar la evidencia."
+      error_msg "${name}: Reset verified, but evidence could not be recorded."
       return 1
     fi
-    success "${name}: Reset completado y verificado."
+    success "${name}: Reset completed and verified."
     return 0
   fi
 
   _runner_redact_log "$log"
-  error_msg "${name}: Reset o verificación del reset falló. Log: ${log}"
+  error_msg "${name}: Reset or reset verification failed. Log: ${log}"
   _runner_record "$name" "reset-failed" 1
   return 1
 }
@@ -439,7 +439,7 @@ reset_selected_tasks() {
   resolve_task_files "${selectors[@]}" || return 1
 
   echo ""
-  warn_msg "Esta operación eliminará la instalación y configuración de las tareas seleccionadas."
+  warn_msg "This operation will remove the installation and configuration of the selected tasks."
   for file in "${RESOLVED_TASKS[@]}"; do
     load_task "$file"
     name="${PACKAGE:-$(basename "$file" .sh)}"
@@ -462,9 +462,9 @@ reset_selected_tasks() {
 
   if ((confirm == 0)); then
     if [[ -t 0 ]]; then
-      read -r -p "Escribe RESET para confirmar: " selector
+      read -r -p "Type RESET to confirm: " selector
     elif ! read -r selector; then
-      error_msg "Reset en entorno no interactivo requiere --yes."
+      error_msg "Reset in a non-interactive environment requires --yes."
       for file in "${supported[@]}"; do
         name=$(task_name "$file")
         _runner_record "$name" "reset-refused"
@@ -473,7 +473,7 @@ reset_selected_tasks() {
       return 1
     fi
     if [[ $selector != "RESET" ]]; then
-      warn_msg "Reset cancelado."
+      warn_msg "Reset cancelled."
       for file in "${supported[@]}"; do
         name=$(task_name "$file")
         _runner_record "$name" "reset-refused"
@@ -756,7 +756,7 @@ run_menu() {
         return 0
         ;;
       *)
-        warn_msg "Opción no válida: ${choice}"
+        warn_msg "Invalid option: ${choice}"
         ;;
     esac
   done
