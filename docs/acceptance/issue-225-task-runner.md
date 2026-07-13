@@ -5,14 +5,8 @@ Audit date: 2026-07-13
 ## Result
 
 The task runner visual interface is implemented and covered by the relevant
-unit, interaction, preflight, and non-Docker regression tests. The following
-criteria remain partial or deferred and prevent closing #225 as fully complete:
-
-- Task descriptions are not shown in a preview or confirmation screen.
-- Discovery failure and an empty inventory are not reported as distinct states
-  before the interactive selector opens.
-- The real entrypoint does not yet have a dedicated end-to-end assertion for
-  `RAVN_UI=auto` or for proving that no-TTY execution never invokes `gum`.
+unit, interaction, preflight, executable-entrypoint, and non-Docker regression
+tests. All 48 acceptance criteria are now satisfied.
 
 ## Criterion mapping
 
@@ -31,8 +25,8 @@ criteria remain partial or deferred and prevent closing #225 as fully complete:
 | 11 | PASS | Unsupported-system message and early exit |
 | 12 | PASS | Numbered Bash fallback via `RAVN_UI=bash` |
 | 13 | PASS | Gum selectors in interactive mode |
-| 14 | PARTIAL | Code avoids gum without a TTY; dedicated entrypoint assertion remains |
-| 15 | PARTIAL | `auto` resolves to gum; dedicated entrypoint assertion remains |
+| 14 | PASS | Executable entrypoint proves no-TTY flows avoid gum |
+| 15 | PASS | Executable pseudo-TTY test proves `auto` selects gum |
 | 16 | PASS | Explicit `RAVN_UI=gum` path |
 | 17 | PASS | Explicit `RAVN_UI=bash` path |
 | 18 | PASS | Task inventory before selection |
@@ -56,9 +50,9 @@ criteria remain partial or deferred and prevent closing #225 as fully complete:
 | 36 | PASS | Screens are cleared between views and results remain readable |
 | 37 | PASS | Runner emits task status updates |
 | 38 | PASS | Canonical global task summary is retained |
-| 39 | DEFERRED | Task descriptions are not currently previewed |
-| 40 | DEFERRED | Discovery failure is not distinguished from empty inventory |
-| 41 | DEFERRED | Empty or failed discovery can still reach selector handling |
+| 39 | PASS | Task descriptions are previewed before confirmation |
+| 40 | PASS | Discovery failure and empty inventory have distinct states |
+| 41 | PASS | Empty or failed discovery stops before selector handling |
 | 42 | PASS | Existing lifecycle functions remain the execution seam |
 | 43 | PASS | Direct subcommands remain available |
 | 44 | PASS | Dry-run remains non-interactive |
@@ -69,11 +63,9 @@ criteria remain partial or deferred and prevent closing #225 as fully complete:
 
 ## Proposed final status comment for #225
 
-> The visual task-runner interface is implemented through PRs #236, #237,
-> #242, #243, and #244. The main menu, shared visual language, Bash/gum
-> selectors, preflight, confirmations, cancellation behavior, and workflow
-> regression coverage are complete. Three criteria remain intentionally open:
-> task-description previews, distinct discovery-failure versus empty-inventory
-> reporting, and dedicated end-to-end assertions for `RAVN_UI=auto` and no-TTY
-> gum avoidance. Issue #225 should remain open until those exceptions are
-> either implemented or explicitly accepted as out of scope.
+> The visual task-runner interface is complete through PRs #236, #237, #242,
+> #243, #244, #250, #251, and #252. All 48 acceptance criteria are mapped to
+> implementation and test evidence, including task-description previews,
+> distinct discovery states, `RAVN_UI=auto`, and no-TTY gum avoidance. The
+> relevant non-Docker suite and shell quality gates pass. Issue #225 is ready
+> for final review and closure.
