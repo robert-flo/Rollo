@@ -181,6 +181,11 @@ make dev-vm-clean
 # Check dependencies and inspect VM disk usage
 make dev-vm-setup
 make dev-vm-size
+make dev-vm-ssh
+
+The Make integration source is `make/dev.mk`; it mirrors the interactive menu
+for revision execution, persistence, snapshots, cleanup, storage, dependency
+setup, resource defaults, and SSH access.
 
 # Preview a target without launching or changing the VM
 make dev-vm DRY_RUN=1 REF=dev

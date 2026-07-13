@@ -110,6 +110,11 @@ assert_contains "$make_persist_output" "ravnvm.sh --persist dev"
 make_setup_output=$(make -s DRY_RUN=1 dev-vm-setup)
 assert_contains "$make_setup_output" "ravnvm.sh --check-deps"
 assert_contains "$make_setup_output" "ravnvm.sh --install-deps"
+make_ssh_output=$(make -s DRY_RUN=1 dev-vm-ssh)
+assert_contains "$make_ssh_output" "ravnvm.sh --ssh"
+make_help_output=$(make -s help)
+assert_contains "$make_help_output" "make dev-vm"
+assert_contains "$make_help_output" "make dev-vm-ssh"
 
 rm -f "$FAKE_BIN/qemu-system-x86_64" "$FAKE_BIN/qemu-img"
 for command_name in env bash realpath dirname clear awk df du find sed basename mktemp mkdir rm grep cat git curl python3; do
