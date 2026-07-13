@@ -27,6 +27,11 @@ if grep -Eiq 'deshabilitado|instalación|verificación|opción|cancelado|tarea n
   exit 1
 fi
 
+if printf '\033\n' | read_task_runner_main_menu_choice > /dev/null 2>&1; then
+  printf 'FAIL: Escape did not return from the main menu\n' >&2
+  exit 1
+fi
+
 # shellcheck disable=SC2329 # Invoked indirectly by read_task_runner_main_menu_choice.
 gum() {
   printf 'q  %s  Exit\n' "$ICON_UI_CLOSE"
