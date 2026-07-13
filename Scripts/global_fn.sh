@@ -76,66 +76,66 @@ readonly ICON_PACKAGE="[PACKAGE]"
 # Nerd Font catalog from Scripts/icons.lua. Keep semantic aliases above stable
 # for existing consumers; use this namespaced catalog for new interfaces.
 declare -Ar RAVN_ICON=(
-    [diagnostics_error]=" "
-    [diagnostics_hint]="󰠠 "
-    [diagnostics_information]=" "
-    [diagnostics_question]=" "
-    [diagnostics_warning]=" "
-    [documents_file]=" "
-    [documents_folder]=" "
-    [documents_open_folder]=" "
-    [documents_symlink]=" "
-    [git_branch]=" "
-    [git_diff]=" "
-    [git_github]=" "
-    [git_remove]=" "
-    [git_repository]=" "
-    [git_tag]=" "
-    [kind_class]=" "
-    [kind_function]="󰊕 "
-    [kind_method]=" "
-    [kind_module]=" "
-    [kind_variable]=" "
-    [type_array]=" "
-    [type_boolean]="⏻ "
-    [type_number]=" "
-    [type_object]=" "
-    [type_string]=" "
-    [ui_arrow]=" "
-    [ui_arrow_left]=" "
-    [ui_arrow_right]=" "
-    [ui_bookmark]=" "
-    [ui_bug]=" "
-    [ui_check]=" "
-    [ui_close]=" "
-    [ui_code]=" "
-    [ui_command]=" "
-    [ui_dashboard]=" "
-    [ui_database]=" "
-    [ui_download]=" "
-    [ui_eye]=" "
-    [ui_flag]=" "
-    [ui_gear]=" "
-    [ui_github]=" "
-    [ui_history]=" "
-    [ui_list]=" "
-    [ui_lock]=" "
-    [ui_package]=" "
-    [ui_play]=" "
-    [ui_power]=" "
-    [ui_project]=" "
-    [ui_question]=" "
-    [ui_reload]=" "
-    [ui_rocket]=" "
-    [ui_save]="󰆓 "
-    [ui_search]=" "
-    [ui_storage]="󰋊 "
-    [ui_table]=" "
-    [ui_terminal]=" "
-    [ui_test]=" "
-    [ui_time]=" "
-    [ui_trash]=" "
-    [ui_wifi]=" "
+     [diagnostics_error]=" "
+     [diagnostics_hint]="󰠠 "
+     [diagnostics_information]=" "
+     [diagnostics_question]=" "
+     [diagnostics_warning]=" "
+     [documents_file]=" "
+     [documents_folder]=" "
+     [documents_open_folder]=" "
+     [documents_symlink]=" "
+     [git_branch]=" "
+     [git_diff]=" "
+     [git_github]=" "
+     [git_remove]=" "
+     [git_repository]=" "
+     [git_tag]=" "
+     [kind_class]=" "
+     [kind_function]="󰊕 "
+     [kind_method]=" "
+     [kind_module]=" "
+     [kind_variable]=" "
+     [type_array]=" "
+     [type_boolean]="⏻ "
+     [type_number]=" "
+     [type_object]=" "
+     [type_string]=" "
+     [ui_arrow]=" "
+     [ui_arrow_left]=" "
+     [ui_arrow_right]=" "
+     [ui_bookmark]=" "
+     [ui_bug]=" "
+     [ui_check]=" "
+     [ui_close]=" "
+     [ui_code]=" "
+     [ui_command]=" "
+     [ui_dashboard]=" "
+     [ui_database]=" "
+     [ui_download]=" "
+     [ui_eye]=" "
+     [ui_flag]=" "
+     [ui_gear]=" "
+     [ui_github]=" "
+     [ui_history]=" "
+     [ui_list]=" "
+     [ui_lock]=" "
+     [ui_package]=" "
+     [ui_play]=" "
+     [ui_power]=" "
+     [ui_project]=" "
+     [ui_question]=" "
+     [ui_reload]=" "
+     [ui_rocket]=" "
+     [ui_save]="󰆓 "
+     [ui_search]=" "
+     [ui_storage]="󰋊 "
+     [ui_table]=" "
+     [ui_terminal]=" "
+     [ui_test]=" "
+     [ui_time]=" "
+     [ui_trash]=" "
+     [ui_wifi]=" "
 )
 
 # shellcheck disable=SC2034
@@ -156,6 +156,8 @@ readonly ICON_UI_DATABASE="${RAVN_ICON[ui_database]}"
 readonly ICON_UI_DOWNLOAD="${RAVN_ICON[ui_download]}"
 # shellcheck disable=SC2034
 readonly ICON_UI_PLAY="${RAVN_ICON[ui_play]}"
+# shellcheck disable=SC2034
+readonly ICON_UI_ROCKET="${RAVN_ICON[ui_rocket]}"
 # shellcheck disable=SC2034
 readonly ICON_UI_SAVE="${RAVN_ICON[ui_save]}"
 # shellcheck disable=SC2034
@@ -364,6 +366,31 @@ error_msg() {
 
 step() {
   print_step "$*"
+}
+
+print_ravn_banner() {
+  local subtitle="${1:-RaVN Task Runner}"
+
+  echo -e "${CYAN}"
+  cat << 'BANNER_EOF'
+  ╭────────────────────────────────────────────────────╮
+  │                                                    │
+  │  ██████╗  █████╗ ██╗   ██╗███╗   ██╗               │
+  │  ██╔══██╗██╔══██╗██║   ██║████╗  ██║               │
+  │  ██████╔╝███████║██║   ██║██╔██╗ ██║               │
+  │  ██╔══██╗██╔══██║╚██╗ ██╔╝██║╚██╗██║               │
+  │  ██║  ██║██║  ██║ ╚████╔╝ ██║ ╚████║               │
+  │  ╚═╝  ╚═╝╚═╝  ╚═╝  ╚═══╝  ╚═╝  ╚═══╝               │
+  │                                                    │
+BANNER_EOF
+  printf '  │       %-44s│\n' "$subtitle"
+  printf '  │       %b%-19s%b %b%-12s%b          │\n' \
+    "$GRAY" "by Roberto Flores" "$CYAN" "$WHITE" "@robert-flo" "$CYAN"
+  cat << 'BANNER_EOF'
+  │                                                    │
+  ╰────────────────────────────────────────────────────╯
+BANNER_EOF
+  echo -e "${NC}"
 }
 
 print_log() {
