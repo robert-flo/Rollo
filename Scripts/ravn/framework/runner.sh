@@ -123,6 +123,14 @@ _runner_record() {
     *) return 0 ;;
   esac
 
+  if declare -f count_ok > /dev/null; then
+    case "$result" in
+      verified | up-to-date | reset) count_ok "$name" ;;
+      skipped | disabled | unverified | reset-refused | reset-unsupported) count_skip "$name" ;;
+      *) count_fail "$name" ;;
+    esac
+  fi
+
   if declare -f ravn_record_task_evidence > /dev/null; then
     ravn_record_task_evidence "${RAVN_CURRENT_TASK_ID:-$name}" \
       "${RAVN_CURRENT_OPERATION:-unknown}" "$state" "$exit_code" "$result" \
@@ -328,6 +336,12 @@ run_selected_tasks() {
 
   TASK_RESULTS=()
   TASK_FAILURES=()
+  _install_ok=0
+  _install_fail=0
+  _install_skip=0
+  _install_ok_list=()
+  _install_fail_list=()
+  _install_skip_list=()
   resolve_task_files "$@" || return 1
 
   for file in "${RESOLVED_TASKS[@]}"; do
@@ -416,6 +430,12 @@ reset_selected_tasks() {
 
   TASK_RESULTS=()
   TASK_FAILURES=()
+  _install_ok=0
+  _install_fail=0
+  _install_skip=0
+  _install_ok_list=()
+  _install_fail_list=()
+  _install_skip_list=()
   resolve_task_files "${selectors[@]}" || return 1
 
   echo ""
@@ -472,13 +492,25 @@ reset_selected_tasks() {
 }
 
 print_task_results() {
-  local result
+  print_summary "Task Results"
+}
 
-  echo ""
-  step "Resultados de tareas"
-  for result in "${TASK_RESULTS[@]}"; do
-    printf '  %s\n' "$result"
-  done
+confirm_task_action() {
+  local prompt="$1"
+  local answer=""
+
+  clear || true
+  print_ravn_banner "RaVN Task Runner"
+  print_section "${ICON_UI_COMMAND} Confirm selection"
+  print_info "$prompt"
+
+  if [[ ${RAVN_UI_EFFECTIVE:-${RAVN_UI:-bash}} == gum ]]; then
+    gum confirm "$prompt"
+    return
+  fi
+
+  read -r -p "${LIGHT_GRAY}Proceed? [y/N]:${NC} " answer
+  [[ ${answer,,} == y || ${answer,,} == yes ]]
 }
 
 task_family_display_name() {
@@ -645,10 +677,16 @@ run_menu_selection() {
   select_task_family || return 0
   select_tasks_for_family || return 0
   selectors=("${SELECTED_TASKS[@]}")
+  if [[ $action == "test" || $action == "reset" || $action == "run" ]]; then
+    if ! confirm_task_action "${#selectors[@]} selected task(s) will be processed"; then
+      print_info "Action cancelled"
+      return 0
+    fi
+  fi
   if [[ $action == "test" ]]; then
     test_selected_tasks "${selectors[@]}"
   elif [[ $action == "reset" ]]; then
-    reset_selected_tasks "${selectors[@]}"
+    reset_selected_tasks --yes "${selectors[@]}"
   else
     run_selected_tasks "$action" "${selectors[@]}"
   fi
@@ -702,7 +740,11 @@ run_menu() {
         run_menu_selection verify || true
         ;;
       2)
-        run_menu_selection run || true
+        if confirm_task_action "All discovered tasks will be executed"; then
+          run_pipeline || true
+        else
+          print_info "Action cancelled"
+        fi
         ;;
       3)
         run_menu_selection test || true
