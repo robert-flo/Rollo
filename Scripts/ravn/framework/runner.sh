@@ -169,7 +169,7 @@ verify_selected_task() {
       error_msg "${name}: Verified, but evidence could not be recorded."
       return 1
     fi
-    success "${name}: Verificado."
+    success "${name}: Verified."
     return 0
   fi
 
@@ -220,7 +220,7 @@ run_selected_task() {
   fi
 
   if ! task_capability verify; then
-    warn_msg "${name}: Instalado, pero sin verify(); resultado no confirmado."
+    warn_msg "${name}: Installed, but verify() is missing; result is unconfirmed."
     _runner_record "$name" "unverified"
     return 1
   fi
@@ -231,7 +231,7 @@ run_selected_task() {
       error_msg "${name}: Installed, but evidence could not be recorded."
       return 1
     fi
-    success "${name}: Instalado y verificado."
+    success "${name}: Installed and verified."
     return 0
   fi
 
@@ -313,7 +313,7 @@ update_selected_task() {
       error_msg "${name}: Updated, but evidence could not be recorded."
       return 1
     fi
-    success "${name}: Actualizado y verificado."
+    success "${name}: Updated and verified."
     return 0
   fi
 
@@ -601,7 +601,7 @@ select_task_family() {
     printf '%s\n' "${options[@]}"
     printf 'q  %s  Back\n' "$ICON_UI_ARROW_LEFT"
     read -r -p "${LIGHT_GRAY}Selection:${NC} " choice
-    [[ ${choice,,} == q ]] && return 1
+    [[ ${choice,,} == q || $choice == $'\e' ]] && return 1
   fi
 
   if ! [[ $choice =~ ^[1-9][0-9]*$ ]] || ((choice < 1 || choice > ${#options[@]})); then
@@ -653,7 +653,7 @@ select_tasks_for_family() {
     printf '%s\n' "${options[@]}"
     printf 'q  %s  Back\n' "$ICON_UI_ARROW_LEFT"
     read -r -p "${LIGHT_GRAY}Selection (comma-separated):${NC} " selected
-    [[ ${selected,,} == q || -z $selected ]] && return 1
+    [[ ${selected,,} == q || $selected == $'\e' || -z $selected ]] && return 1
     IFS=',' read -ra selections <<< "$selected"
   fi
 
@@ -716,6 +716,7 @@ read_task_runner_main_menu_choice() {
     printf '  %b%s%b  %s\n' "$GREEN" "${choice%% *}" "$NC" "${choice#*  }"
   done
   read -r -p "${LIGHT_GRAY}Selection:${NC} " choice
+  [[ $choice == $'\e' ]] && return 1
   MENU_CHOICE="$choice"
 }
 

@@ -51,6 +51,19 @@ gum_selection_output=$(
 )
 assert_contains "$gum_selection_output" "SELECTED:codex,copilot"
 
+export RAVN_UI_EFFECTIVE=bash
+if printf '\033\n' | select_task_family > /dev/null 2>&1; then
+  printf 'FAIL: Escape did not return from task-family selection\n' >&2
+  exit 1
+fi
+
+# shellcheck disable=SC2034 # Consumed by select_tasks_for_family from the sourced runner.
+SELECTED_TASK_FAMILY=cli-tools
+if printf '\033\n' | select_tasks_for_family > /dev/null 2>&1; then
+  printf 'FAIL: Escape did not return from task selection\n' >&2
+  exit 1
+fi
+
 # shellcheck disable=SC2034 # Consumed by select_task_family through the sourced runner.
 TASKS=()
 if select_task_family > /tmp/category-empty-output 2>&1; then
