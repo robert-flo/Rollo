@@ -64,6 +64,11 @@ if printf '\033\n' | select_tasks_for_family > /dev/null 2>&1; then
   exit 1
 fi
 
+if printf '1,999\n' | select_tasks_for_family > /dev/null 2>&1; then
+  printf 'FAIL: invalid task selection was partially accepted\n' >&2
+  exit 1
+fi
+
 # shellcheck disable=SC2034 # Consumed by select_task_family through the sourced runner.
 TASKS=()
 if select_task_family > /tmp/category-empty-output 2>&1; then
