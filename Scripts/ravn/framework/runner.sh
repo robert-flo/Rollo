@@ -481,39 +481,170 @@ print_task_results() {
   done
 }
 
-print_task_catalog() {
-  local file name family
-
-  print_section "${ICON_UI_DATABASE} Task inventory"
-  for file in "${TASKS[@]}"; do
-    name=$(task_name "$file")
-    family=$(task_family "$file")
-    [[ -z $family ]] && family="legacy"
-    printf '  %-24s [%s]\n' "$name" "$family"
-  done
+task_family_display_name() {
+  case "$1" in
+    cli-tools) printf 'CLI Tools' ;;
+    legacy) printf 'Legacy' ;;
+    *) printf '%s' "${1^}" ;;
+  esac
 }
 
-read_task_selection() {
-  local selection selector
-  local -a selectors=()
+task_family_icon() {
+  case "$1" in
+    cli-tools) printf '%s' "$ICON_UI_TERMINAL" ;;
+    legacy) printf '%s' "$ICON_DIAGNOSTIC_WARNING" ;;
+    *) printf '%s' "$ICON_UI_PACKAGE" ;;
+  esac
+}
 
-  read -r -p "Tareas (ALL o separadas por coma, q para cancelar): " selection
-  [[ ${selection,,} == "q" ]] && return 1
-  [[ -z $selection ]] && return 1
+task_family_keys() {
+  local file family
+  local -a known=() unknown=()
 
-  IFS=',' read -ra selectors <<< "$selection"
-  for selector in "${selectors[@]}"; do
-    selector="${selector// /}"
-    [[ -n $selector ]] && printf '%s\n' "$selector"
+  while IFS= read -r family; do
+    case "$family" in
+      cli-tools | legacy) known+=("$family") ;;
+      *) unknown+=("$family") ;;
+    esac
+  done < <(
+    for file in "${TASKS[@]}"; do
+      family=$(task_family "$file")
+      [[ -n $family ]] || family="legacy"
+      printf '%s\n' "$family"
+    done | sort -u
+  )
+
+  printf '%s\n' "${known[@]}" "${unknown[@]}" | sed '/^$/d'
+}
+
+task_family_count() {
+  local target="$1"
+  local file family count=0
+
+  for file in "${TASKS[@]}"; do
+    family=$(task_family "$file")
+    [[ -n $family ]] || family="legacy"
+    [[ $family == "$target" ]] && count=$((count + 1))
   done
+  printf '%s\n' "$count"
+}
+
+print_task_catalog() {
+  local family display count
+
+  print_section "${ICON_UI_DATABASE} Task inventory"
+  while IFS= read -r family; do
+    display=$(task_family_display_name "$family")
+    count=$(task_family_count "$family")
+    printf '  %s  %s · %s tasks\n' "$(task_family_icon "$family")" "$display" "$count"
+  done < <(task_family_keys)
+}
+
+select_task_family() {
+  local family display count choice selected
+  local -a families=() options=()
+
+  mapfile -t families < <(task_family_keys)
+  ((${#families[@]} > 0)) || {
+    print_info "No tasks available"
+    return 1
+  }
+
+  local index=1
+  for family in "${families[@]}"; do
+    display=$(task_family_display_name "$family")
+    count=$(task_family_count "$family")
+    options+=("${index}  $(task_family_icon "$family")  ${display} · ${count} tasks")
+    index=$((index + 1))
+  done
+  options+=("${index}  ${ICON_UI_DATABASE}  All categories · $((${#TASKS[@]})) tasks")
+
+  clear || true
+  print_ravn_banner "RaVN Task Runner"
+  print_section "${ICON_UI_DATABASE} Choose tasks"
+  if [[ ${RAVN_UI_EFFECTIVE:-${RAVN_UI:-bash}} == gum ]]; then
+    selected=$(gum choose --header "" --cursor "$ICON_UI_ARROW" "${options[@]}") || return 1
+    choice="${selected%% *}"
+  else
+    printf '%s\n' "${options[@]}"
+    printf 'q  %s  Back\n' "$ICON_UI_ARROW_LEFT"
+    read -r -p "${LIGHT_GRAY}Selection:${NC} " choice
+    [[ ${choice,,} == q ]] && return 1
+  fi
+
+  if ! [[ $choice =~ ^[1-9][0-9]*$ ]] || ((choice < 1 || choice > ${#options[@]})); then
+    print_warn "Invalid task family selection: ${choice}"
+    return 1
+  fi
+
+  if ((choice == ${#options[@]})); then
+    SELECTED_TASK_FAMILY="ALL"
+  else
+    SELECTED_TASK_FAMILY="${families[choice - 1]}"
+  fi
+}
+
+select_tasks_for_family() {
+  local file name family display selected choice index
+  local -a files=() names=() options=() selections=()
+
+  while IFS=$'\t' read -r name file; do
+    files+=("$file")
+    names+=("$name")
+  done < <(
+    for file in "${TASKS[@]}"; do
+      family=$(task_family "$file")
+      [[ -n $family ]] || family="legacy"
+      [[ $SELECTED_TASK_FAMILY == ALL || $family == "$SELECTED_TASK_FAMILY" ]] || continue
+      printf '%s\t%s\n' "$(task_name "$file")" "$file"
+    done | sort -f -k1,1
+  )
+
+  ((${#files[@]} > 0)) || {
+    print_info "No tasks available in the selected category"
+    return 1
+  }
+
+  for index in "${!files[@]}"; do
+    family=$(task_family "${files[index]}")
+    [[ -n $family ]] || family="legacy"
+    display=$(task_family_display_name "$family")
+    options+=("$((index + 1))  $(task_family_icon "$family")  ${names[index]} · ${display}")
+  done
+
+  clear || true
+  print_ravn_banner "RaVN Task Runner"
+  print_section "${ICON_UI_DATABASE} Choose tasks"
+  if [[ ${RAVN_UI_EFFECTIVE:-${RAVN_UI:-bash}} == gum ]]; then
+    mapfile -t selections < <(gum choose --no-limit --header "" --cursor "$ICON_UI_ARROW" "${options[@]}") || return 1
+  else
+    printf '%s\n' "${options[@]}"
+    printf 'q  %s  Back\n' "$ICON_UI_ARROW_LEFT"
+    read -r -p "${LIGHT_GRAY}Selection (comma-separated):${NC} " selected
+    [[ ${selected,,} == q || -z $selected ]] && return 1
+    IFS=',' read -ra selections <<< "$selected"
+  fi
+
+  SELECTED_TASKS=()
+  for selected in "${selections[@]}"; do
+    choice="${selected%% *}"
+    if [[ $choice =~ ^[1-9][0-9]*$ ]] && ((choice <= ${#files[@]})); then
+      SELECTED_TASKS+=("$(task_name "${files[choice - 1]}")")
+    fi
+  done
+  ((${#SELECTED_TASKS[@]} > 0)) || {
+    print_info "No tasks selected"
+    return 1
+  }
 }
 
 run_menu_selection() {
   local action="$1"
   local -a selectors=()
 
-  mapfile -t selectors < <(read_task_selection)
-  ((${#selectors[@]} > 0)) || return 0
+  select_task_family || return 0
+  select_tasks_for_family || return 0
+  selectors=("${SELECTED_TASKS[@]}")
   if [[ $action == "test" ]]; then
     test_selected_tasks "${selectors[@]}"
   elif [[ $action == "reset" ]]; then
@@ -568,7 +699,7 @@ run_menu() {
 
     case "${choice,,}" in
       1)
-        run_selected_tasks verify ALL || true
+        run_menu_selection verify || true
         ;;
       2)
         run_menu_selection run || true
