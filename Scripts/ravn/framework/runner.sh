@@ -523,6 +523,33 @@ run_menu_selection() {
   fi
 }
 
+task_runner_main_menu_options() {
+  printf '1  %s  Verify current configuration\n' "$ICON_UI_GEAR"
+  printf '2  %s  Run full setup\n' "$ICON_UI_ROCKET"
+  printf '3  %s  Run integration test\n' "$ICON_UI_TEST"
+  printf '4  %s  Reset selected tasks\n' "$ICON_UI_TRASH"
+  printf 'q  %s  Exit\n' "$ICON_UI_CLOSE"
+}
+
+read_task_runner_main_menu_choice() {
+  local -a options=()
+  local choice=""
+  local gum_choice=""
+
+  mapfile -t options < <(task_runner_main_menu_options)
+  if [[ ${RAVN_UI_EFFECTIVE:-${RAVN_UI:-bash}} == gum ]]; then
+    gum_choice=$(gum choose --header "" --cursor "$ICON_UI_ARROW" "${options[@]}") || return 1
+    MENU_CHOICE="${gum_choice%% *}"
+    return 0
+  fi
+
+  for choice in "${options[@]}"; do
+    printf '  %b%s%b  %s\n' "$GREEN" "${choice%% *}" "$NC" "${choice#*  }"
+  done
+  read -r -p "${LIGHT_GRAY}Selection:${NC} " choice
+  MENU_CHOICE="$choice"
+}
+
 run_menu() {
   local choice
 
@@ -534,12 +561,10 @@ run_menu() {
     print_section "${ICON_UI_COMMAND} Choose an action"
     print_task_catalog
     echo ""
-    printf '  %b1%b  %b%s%b  Verify current configuration\n' "$GREEN" "$NC" "$ICON_UI_GEAR" "$WHITE" "$NC"
-    printf '  %b2%b  %b%s%b  Run full setup\n' "$GREEN" "$NC" "$ICON_UI_ROCKET" "$WHITE" "$NC"
-    printf '  %b3%b  %b%s%b  Run integration test\n' "$GREEN" "$NC" "$ICON_UI_TEST" "$WHITE" "$NC"
-    printf '  %b4%b  %b%s%b  Reset selected tasks\n' "$GREEN" "$NC" "$ICON_UI_TRASH" "$WHITE" "$NC"
-    printf '  %bq%b  %b%s%b  Exit\n' "$GREEN" "$NC" "$ICON_UI_CLOSE" "$WHITE" "$NC"
-    read -r -p "${LIGHT_GRAY}Selection:${NC} " choice
+    if ! read_task_runner_main_menu_choice; then
+      continue
+    fi
+    choice="$MENU_CHOICE"
 
     case "${choice,,}" in
       1)
