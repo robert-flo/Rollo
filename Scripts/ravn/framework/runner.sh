@@ -93,7 +93,7 @@ _runner_log_dir() {
 _runner_redact_log() {
   local log="$1"
 
-  if declare -f ravn_redact_log >/dev/null; then
+  if declare -f ravn_redact_log > /dev/null; then
     ravn_redact_log "$log"
   fi
 }
@@ -110,20 +110,20 @@ _runner_record() {
   fi
 
   case "$result" in
-  verified | up-to-date) state="verified" ;;
-  update-available) state="stale" ;;
-  skipped) state="installed" ;;
-  disabled | reset) state="absent" ;;
-  unverified | reset-unsupported) state="partial" ;;
-  failed | reset-failed) state="broken" ;;
-  dependency-missing) state="dependency-missing" ;;
-  update-failed) state="update-failed" ;;
-  rollback-failed) state="rollback-failed" ;;
-  unsupported) state="unsupported" ;;
-  *) return 0 ;;
+    verified | up-to-date) state="verified" ;;
+    update-available) state="stale" ;;
+    skipped) state="installed" ;;
+    disabled | reset) state="absent" ;;
+    unverified | reset-unsupported) state="partial" ;;
+    failed | reset-failed) state="broken" ;;
+    dependency-missing) state="dependency-missing" ;;
+    update-failed) state="update-failed" ;;
+    rollback-failed) state="rollback-failed" ;;
+    unsupported) state="unsupported" ;;
+    *) return 0 ;;
   esac
 
-  if declare -f ravn_record_task_evidence >/dev/null; then
+  if declare -f ravn_record_task_evidence > /dev/null; then
     ravn_record_task_evidence "${RAVN_CURRENT_TASK_ID:-$name}" \
       "${RAVN_CURRENT_OPERATION:-unknown}" "$state" "$exit_code" "$result" \
       "$RAVN_EVIDENCE_LOG_PATH"
@@ -155,7 +155,7 @@ verify_selected_task() {
     return 1
   fi
 
-  if verify >>"$log" 2>&1; then
+  if verify >> "$log" 2>&1; then
     _runner_redact_log "$log"
     if ! _runner_record "$name" "verified"; then
       error_msg "${name}: Verificado, pero no se pudo registrar la evidencia."
@@ -200,7 +200,7 @@ run_selected_task() {
     return 0
   fi
 
-  if ! install >>"$log" 2>&1; then
+  if ! install >> "$log" 2>&1; then
     _runner_redact_log "$log"
     error_msg "${name}: Instalación falló. Log: ${log}"
     if [[ ${RAVN_DEPENDENCY_MISSING:-false} == true ]]; then
@@ -217,7 +217,7 @@ run_selected_task() {
     return 1
   fi
 
-  if verify >>"$log" 2>&1; then
+  if verify >> "$log" 2>&1; then
     _runner_redact_log "$log"
     if ! _runner_record "$name" "verified"; then
       error_msg "${name}: Instalado, pero no se pudo registrar la evidencia."
@@ -252,7 +252,7 @@ check_updates_selected_task() {
     return 1
   fi
 
-  if ! check_updates >>"$log" 2>&1; then
+  if ! check_updates >> "$log" 2>&1; then
     _runner_redact_log "$log"
     error_msg "${name}: No se pudo consultar actualizaciones. Log: ${log}"
     if [[ ${RAVN_UPDATE_RESULT:-} == "unsupported" ]]; then
@@ -293,9 +293,9 @@ update_selected_task() {
     return 1
   fi
 
-  if update >>"$log" 2>&1; then
+  if update >> "$log" 2>&1; then
     _runner_redact_log "$log"
-    if ! task_capability verify || ! verify >>"$log" 2>&1; then
+    if ! task_capability verify || ! verify >> "$log" 2>&1; then
       _runner_redact_log "$log"
       error_msg "${name}: update() terminó, pero verify() falló. Log: ${log}"
       _runner_record "$name" "update-failed" 1
@@ -332,10 +332,10 @@ run_selected_tasks() {
 
   for file in "${RESOLVED_TASKS[@]}"; do
     case "$action" in
-    verify) verify_selected_task "$file" || status=1 ;;
-    check-updates) check_updates_selected_task "$file" || status=1 ;;
-    update) update_selected_task "$file" || status=1 ;;
-    *) run_selected_task "$file" || status=1 ;;
+      verify) verify_selected_task "$file" || status=1 ;;
+      check-updates) check_updates_selected_task "$file" || status=1 ;;
+      update) update_selected_task "$file" || status=1 ;;
+      *) run_selected_task "$file" || status=1 ;;
     esac
   done
 
@@ -382,7 +382,7 @@ reset_selected_task() {
     return 1
   fi
 
-  if reset >>"$log" 2>&1 && verify_reset >>"$log" 2>&1; then
+  if reset >> "$log" 2>&1 && verify_reset >> "$log" 2>&1; then
     _runner_redact_log "$log"
     if ! _runner_record "$name" "reset"; then
       error_msg "${name}: Reset verificado, pero no se pudo registrar la evidencia."
@@ -484,8 +484,7 @@ print_task_results() {
 print_task_catalog() {
   local file name family
 
-  echo ""
-  step "Tareas disponibles"
+  print_section "${ICON_UI_DATABASE} Task inventory"
   for file in "${TASKS[@]}"; do
     name=$(task_name "$file")
     family=$(task_family "$file")
@@ -502,7 +501,7 @@ read_task_selection() {
   [[ ${selection,,} == "q" ]] && return 1
   [[ -z $selection ]] && return 1
 
-  IFS=',' read -ra selectors <<<"$selection"
+  IFS=',' read -ra selectors <<< "$selection"
   for selector in "${selectors[@]}"; do
     selector="${selector// /}"
     [[ -n $selector ]] && printf '%s\n' "$selector"
@@ -530,36 +529,37 @@ run_menu() {
   discover_tasks
 
   while true; do
-    echo ""
-    step "RaVN Task Runner"
+    clear || true
+    print_ravn_banner "RaVN Task Runner"
+    print_section "${ICON_UI_COMMAND} Choose an action"
     print_task_catalog
     echo ""
-    printf '  1  Verify current configuration\n'
-    printf '  2  Run full setup\n'
-    printf '  3  Run integration test\n'
-    printf '  4  Reset selected tasks\n'
-    printf '  q  Exit\n'
-    read -r -p "Selecciona una opción: " choice
+    printf '  %b1%b  %b%s%b  Verify current configuration\n' "$GREEN" "$NC" "$ICON_UI_GEAR" "$WHITE" "$NC"
+    printf '  %b2%b  %b%s%b  Run full setup\n' "$GREEN" "$NC" "$ICON_UI_ROCKET" "$WHITE" "$NC"
+    printf '  %b3%b  %b%s%b  Run integration test\n' "$GREEN" "$NC" "$ICON_UI_TEST" "$WHITE" "$NC"
+    printf '  %b4%b  %b%s%b  Reset selected tasks\n' "$GREEN" "$NC" "$ICON_UI_TRASH" "$WHITE" "$NC"
+    printf '  %bq%b  %b%s%b  Exit\n' "$GREEN" "$NC" "$ICON_UI_CLOSE" "$WHITE" "$NC"
+    read -r -p "${LIGHT_GRAY}Selection:${NC} " choice
 
     case "${choice,,}" in
-    1)
-      run_selected_tasks verify ALL || true
-      ;;
-    2)
-      run_menu_selection run || true
-      ;;
-    3)
-      run_menu_selection test || true
-      ;;
-    4)
-      run_menu_selection reset || true
-      ;;
-    q)
-      return 0
-      ;;
-    *)
-      warn_msg "Opción no válida: ${choice}"
-      ;;
+      1)
+        run_selected_tasks verify ALL || true
+        ;;
+      2)
+        run_menu_selection run || true
+        ;;
+      3)
+        run_menu_selection test || true
+        ;;
+      4)
+        run_menu_selection reset || true
+        ;;
+      q)
+        return 0
+        ;;
+      *)
+        warn_msg "Opción no válida: ${choice}"
+        ;;
     esac
   done
 }
