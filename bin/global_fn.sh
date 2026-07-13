@@ -1,12 +1,4 @@
 #!/usr/bin/env bash
-
-# Prevent duplicate loading when this library is sourced more than once.
-if [[ ${_GLOBAL_FN_SOURCED:-0} -eq 1 ]]; then
-  # shellcheck disable=SC2317
-  return 0 2> /dev/null || exit 0
-fi
-readonly _GLOBAL_FN_SOURCED=1
-
 # ╭──────────────────────────────────────────────────────────────────────────────╮
 # │                                                                              │
 # │                        Global Functions & Variables                          │
@@ -20,122 +12,95 @@ readonly _GLOBAL_FN_SOURCED=1
 # │ Colors & Styling                                                             │
 # └──────────────────────────────────────────────────────────────────────────────┘
 
-# Colors and icons use a terminal-friendly presentation by default. Disable
-# styling automatically for pipes, Docker/CI output, dumb terminals, or when
-# the caller explicitly requests the NO_COLOR convention.
-if [[ -t 1 && ${TERM:-dumb} != "dumb" && -z ${NO_COLOR:-} ]]; then
-  readonly RED=$'\033[0;31m'
-  readonly GREEN=$'\033[0;32m'
-  readonly YELLOW=$'\033[0;33m'
-  readonly BLUE=$'\033[0;34m'
-  readonly MAGENTA=$'\033[0;35m'
-  readonly CYAN=$'\033[0;36m'
-  readonly WHITE=$'\033[1;37m'
-  readonly GRAY=$'\033[0;90m'
-  readonly LIGHT_GRAY=$'\033[0;37m'
-  readonly NC=$'\033[0m'
-  readonly ICON_CHECK="✓"
-  readonly ICON_CROSS="✗"
-  readonly ICON_ARROW="→"
-  readonly ICON_WARN="⚠"
-  readonly ICON_INFO="ℹ"
-else
-  readonly RED=""
-  readonly GREEN=""
-  readonly YELLOW=""
-  readonly BLUE=""
-  readonly MAGENTA=""
-  readonly CYAN=""
-  readonly WHITE=""
-  readonly GRAY=""
-  readonly LIGHT_GRAY=""
-  readonly NC=""
-  readonly ICON_CHECK="[OK]"
-  readonly ICON_CROSS="[ERROR]"
-  readonly ICON_ARROW=">"
-  readonly ICON_WARN="[WARN]"
-  readonly ICON_INFO="[INFO]"
-fi
+# Colors
+readonly RED='\033[0;31m'
+readonly GREEN='\033[0;32m'
+readonly YELLOW='\033[0;33m'
+readonly BLUE='\033[0;34m'
+readonly MAGENTA='\033[0;35m'
+readonly CYAN='\033[0;36m'
+readonly WHITE='\033[1;37m'
+readonly GRAY='\033[0;90m'
+readonly LIGHT_GRAY='\033[0;37m'
+readonly NC='\033[0m'
 
-# These are retained as public constants; they are not rendered in logs.
-# shellcheck disable=SC2034
-readonly ICON_KEY="[KEY]"
-# shellcheck disable=SC2034
-readonly ICON_LOCK="[LOCK]"
-# shellcheck disable=SC2034
-readonly ICON_GIT="[GIT]"
-# shellcheck disable=SC2034
-readonly ICON_GITHUB="[GITHUB]"
-# shellcheck disable=SC2034
-readonly ICON_GEAR="[GEAR]"
-# shellcheck disable=SC2034
-readonly ICON_ROCKET="[ROCKET]"
-# shellcheck disable=SC2034
-readonly ICON_PACKAGE="[PACKAGE]"
+# Nerd Font Icons
+readonly ICON_CHECK="✓"
+readonly ICON_CROSS="✗"
+readonly ICON_ARROW="→"
+readonly ICON_WARN="⚠"
+readonly ICON_INFO="ℹ"
+readonly ICON_KEY="󰌋"
+readonly ICON_LOCK="󰌾"
+readonly ICON_GIT=""
+readonly ICON_GITHUB=""
+readonly ICON_GEAR="󰒓"
+readonly ICON_ROCKET="󱓞"
+readonly ICON_PACKAGE="󰏗"
 
 # Nerd Font catalog from Scripts/icons.lua. Keep semantic aliases above stable
 # for existing consumers; use this namespaced catalog for new interfaces.
 declare -Ar RAVN_ICON=(
-       [diagnostics_error]=" "
-       [diagnostics_hint]="󰠠 "
-       [diagnostics_information]=" "
-       [diagnostics_question]=" "
-       [diagnostics_warning]=" "
-       [documents_file]=" "
-       [documents_folder]=" "
-       [documents_open_folder]=" "
-       [documents_symlink]=" "
-       [git_branch]=" "
-       [git_diff]=" "
-       [git_github]=" "
-       [git_remove]=" "
-       [git_repository]=" "
-       [git_tag]=" "
-       [kind_class]=" "
-       [kind_function]="󰊕 "
-       [kind_method]=" "
-       [kind_module]=" "
-       [kind_variable]=" "
-       [type_array]=" "
-       [type_boolean]="⏻ "
-       [type_number]=" "
-       [type_object]=" "
-       [type_string]=" "
-       [ui_arrow]=" "
-       [ui_arrow_left]=" "
-       [ui_arrow_right]=" "
-       [ui_bookmark]=" "
-       [ui_bug]=" "
-       [ui_check]=" "
-       [ui_close]=" "
-       [ui_code]=" "
-       [ui_command]=" "
-       [ui_dashboard]=" "
-       [ui_database]=" "
-       [ui_download]=" "
-       [ui_eye]=" "
-       [ui_flag]=" "
-       [ui_gear]=" "
-       [ui_github]=" "
-       [ui_history]=" "
-       [ui_list]=" "
-       [ui_lock]=" "
-       [ui_package]=" "
-       [ui_play]=" "
-       [ui_power]=" "
-       [ui_project]=" "
-       [ui_question]=" "
-       [ui_reload]=" "
-       [ui_rocket]=" "
-       [ui_save]="󰆓 "
-       [ui_search]=" "
-       [ui_storage]="󰋊 "
-       [ui_table]=" "
-       [ui_terminal]=" "
-       [ui_test]=" "
-       [ui_time]=" "
-       [ui_trash]=" "
-       [ui_wifi]=" "
+    [diagnostics_error]=" "
+    [diagnostics_hint]="󰠠 "
+    [diagnostics_information]=" "
+    [diagnostics_question]=" "
+    [diagnostics_warning]=" "
+    [documents_file]=" "
+    [documents_folder]=" "
+    [documents_open_folder]=" "
+    [documents_symlink]=" "
+    [git_branch]=" "
+    [git_diff]=" "
+    [git_github]=" "
+    [git_remove]=" "
+    [git_repository]=" "
+    [git_tag]=" "
+    [kind_class]=" "
+    [kind_function]="󰊕 "
+    [kind_method]=" "
+    [kind_module]=" "
+    [kind_variable]=" "
+    [type_array]=" "
+    [type_boolean]="⏻ "
+    [type_number]=" "
+    [type_object]=" "
+    [type_string]=" "
+    [ui_arrow]=" "
+    [ui_arrow_left]=" "
+    [ui_arrow_right]=" "
+    [ui_bookmark]=" "
+    [ui_bug]=" "
+    [ui_check]=" "
+    [ui_close]=" "
+    [ui_code]=" "
+    [ui_command]=" "
+    [ui_dashboard]=" "
+    [ui_database]=" "
+    [ui_download]=" "
+    [ui_eye]=" "
+    [ui_flag]=" "
+    [ui_gear]=" "
+    [ui_github]=" "
+    [ui_history]=" "
+    [ui_list]=" "
+    [ui_lock]=" "
+    [ui_package]=" "
+    [ui_play]=" "
+    [ui_power]=" "
+    [ui_project]=" "
+    [ui_question]=" "
+    [ui_reload]=" "
+    [ui_rocket]=" "
+    [ui_save]="󰆓 "
+    [ui_search]=" "
+    [ui_storage]="󰋊 "
+    [ui_table]=" "
+    [ui_terminal]=" "
+    [ui_test]=" "
+    [ui_time]=" "
+    [ui_trash]=" "
+    [ui_wifi]=" "
 )
 
 # shellcheck disable=SC2034
@@ -157,8 +122,6 @@ readonly ICON_UI_DOWNLOAD="${RAVN_ICON[ui_download]}"
 # shellcheck disable=SC2034
 readonly ICON_UI_PLAY="${RAVN_ICON[ui_play]}"
 # shellcheck disable=SC2034
-readonly ICON_UI_ROCKET="${RAVN_ICON[ui_rocket]}"
-# shellcheck disable=SC2034
 readonly ICON_UI_SAVE="${RAVN_ICON[ui_save]}"
 # shellcheck disable=SC2034
 readonly ICON_UI_LIST="${RAVN_ICON[ui_list]}"
@@ -168,8 +131,6 @@ readonly ICON_UI_PACKAGE="${RAVN_ICON[ui_package]}"
 readonly ICON_UI_CLOSE="${RAVN_ICON[ui_close]}"
 # shellcheck disable=SC2034
 readonly ICON_UI_ARROW_LEFT="${RAVN_ICON[ui_arrow_left]}"
-# shellcheck disable=SC2034
-readonly ICON_UI_ARROW="${RAVN_ICON[ui_arrow]}"
 # shellcheck disable=SC2034
 readonly ICON_UI_STORAGE="${RAVN_ICON[ui_storage]}"
 # shellcheck disable=SC2034
@@ -368,31 +329,6 @@ error_msg() {
 
 step() {
   print_step "$*"
-}
-
-print_ravn_banner() {
-  local subtitle="${1:-RaVN Task Runner}"
-
-  echo -e "${CYAN}"
-  cat << 'BANNER_EOF'
-  ╭────────────────────────────────────────────────────╮
-  │                                                    │
-  │  ██████╗  █████╗ ██╗   ██╗███╗   ██╗               │
-  │  ██╔══██╗██╔══██╗██║   ██║████╗  ██║               │
-  │  ██████╔╝███████║██║   ██║██╔██╗ ██║               │
-  │  ██╔══██╗██╔══██║╚██╗ ██╔╝██║╚██╗██║               │
-  │  ██║  ██║██║  ██║ ╚████╔╝ ██║ ╚████║               │
-  │  ╚═╝  ╚═╝╚═╝  ╚═╝  ╚═══╝  ╚═╝  ╚═══╝               │
-  │                                                    │
-BANNER_EOF
-  printf '  │       %-44s│\n' "$subtitle"
-  printf '  │       %b%-19s%b %b%-12s%b          │\n' \
-    "$GRAY" "by Roberto Flores" "$CYAN" "$WHITE" "@robert-flo" "$CYAN"
-  cat << 'BANNER_EOF'
-  │                                                    │
-  ╰────────────────────────────────────────────────────╯
-BANNER_EOF
-  echo -e "${NC}"
 }
 
 print_log() {
@@ -724,25 +660,11 @@ print_summary() {
   local label="${1:-Installation}"
   local total=$((_install_ok + _install_fail + _install_skip))
   local title="RaVN ${label} Summary"
-  local w=39
-  local title_len=${#title}
-  local pad_left=0
-  local pad_right=0
 
-  # Si el título excede el ancho de la caja, se trunca para no romper el layout
-  # (evita padding negativo y desalineación de las filas de estadísticas).
-  if ((title_len > w - 2)); then
-    title="${title:0:$((w - 5))}..."
-    title_len=${#title}
-  fi
-
-  pad_left=$(((w - title_len) / 2))
-  pad_right=$((w - title_len - pad_left))
-
-  border=$(printf '─%.0s' $(seq 1 "$w"))
+  border=$(printf '─%.0s' {1..39})
   echo ""
   echo -e "  ${GRAY}┌${border}┐${NC}"
-  printf "  ${GRAY}│${NC}${WHITE}%*s%s%*s${NC}${GRAY}│${NC}\n" "$pad_left" "" "$title" "$pad_right" ""
+  printf "  ${GRAY}│${NC}  ${WHITE}%s${NC}%*s${GRAY}│${NC}\n" "$title" "$((37 - ${#title}))" ""
   echo -e "  ${GRAY}├${border}┤${NC}"
   printf "  ${GRAY}│${NC}  ${GREEN}${ICON_CHECK}${NC} Exitosos:%25s ${GRAY}│${NC}\n" "$_install_ok"
   printf "  ${GRAY}│${NC}  ${RED}${ICON_CROSS}${NC} Fallidos:%25s ${GRAY}│${NC}\n" "$_install_fail"

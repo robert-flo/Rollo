@@ -93,7 +93,7 @@ _runner_log_dir() {
 _runner_redact_log() {
   local log="$1"
 
-  if declare -f ravn_redact_log >/dev/null; then
+  if declare -f ravn_redact_log > /dev/null; then
     ravn_redact_log "$log"
   fi
 }
@@ -110,20 +110,28 @@ _runner_record() {
   fi
 
   case "$result" in
-  verified | up-to-date) state="verified" ;;
-  update-available) state="stale" ;;
-  skipped) state="installed" ;;
-  disabled | reset) state="absent" ;;
-  unverified | reset-unsupported) state="partial" ;;
-  failed | reset-failed) state="broken" ;;
-  dependency-missing) state="dependency-missing" ;;
-  update-failed) state="update-failed" ;;
-  rollback-failed) state="rollback-failed" ;;
-  unsupported) state="unsupported" ;;
-  *) return 0 ;;
+    verified | up-to-date) state="verified" ;;
+    update-available) state="stale" ;;
+    skipped) state="installed" ;;
+    disabled | reset) state="absent" ;;
+    unverified | reset-unsupported) state="partial" ;;
+    failed | reset-failed) state="broken" ;;
+    dependency-missing) state="dependency-missing" ;;
+    update-failed) state="update-failed" ;;
+    rollback-failed) state="rollback-failed" ;;
+    unsupported) state="unsupported" ;;
+    *) return 0 ;;
   esac
 
-  if declare -f ravn_record_task_evidence >/dev/null; then
+  if declare -f count_ok > /dev/null; then
+    case "$result" in
+      verified | up-to-date | reset) count_ok "$name" ;;
+      skipped | disabled | unverified | reset-refused | reset-unsupported) count_skip "$name" ;;
+      *) count_fail "$name" ;;
+    esac
+  fi
+
+  if declare -f ravn_record_task_evidence > /dev/null; then
     ravn_record_task_evidence "${RAVN_CURRENT_TASK_ID:-$name}" \
       "${RAVN_CURRENT_OPERATION:-unknown}" "$state" "$exit_code" "$result" \
       "$RAVN_EVIDENCE_LOG_PATH"
@@ -155,7 +163,7 @@ verify_selected_task() {
     return 1
   fi
 
-  if verify >>"$log" 2>&1; then
+  if verify >> "$log" 2>&1; then
     _runner_redact_log "$log"
     if ! _runner_record "$name" "verified"; then
       error_msg "${name}: Verificado, pero no se pudo registrar la evidencia."
@@ -200,7 +208,7 @@ run_selected_task() {
     return 0
   fi
 
-  if ! install >>"$log" 2>&1; then
+  if ! install >> "$log" 2>&1; then
     _runner_redact_log "$log"
     error_msg "${name}: Instalación falló. Log: ${log}"
     if [[ ${RAVN_DEPENDENCY_MISSING:-false} == true ]]; then
@@ -217,7 +225,7 @@ run_selected_task() {
     return 1
   fi
 
-  if verify >>"$log" 2>&1; then
+  if verify >> "$log" 2>&1; then
     _runner_redact_log "$log"
     if ! _runner_record "$name" "verified"; then
       error_msg "${name}: Instalado, pero no se pudo registrar la evidencia."
@@ -252,7 +260,7 @@ check_updates_selected_task() {
     return 1
   fi
 
-  if ! check_updates >>"$log" 2>&1; then
+  if ! check_updates >> "$log" 2>&1; then
     _runner_redact_log "$log"
     error_msg "${name}: No se pudo consultar actualizaciones. Log: ${log}"
     if [[ ${RAVN_UPDATE_RESULT:-} == "unsupported" ]]; then
@@ -293,9 +301,9 @@ update_selected_task() {
     return 1
   fi
 
-  if update >>"$log" 2>&1; then
+  if update >> "$log" 2>&1; then
     _runner_redact_log "$log"
-    if ! task_capability verify || ! verify >>"$log" 2>&1; then
+    if ! task_capability verify || ! verify >> "$log" 2>&1; then
       _runner_redact_log "$log"
       error_msg "${name}: update() terminó, pero verify() falló. Log: ${log}"
       _runner_record "$name" "update-failed" 1
@@ -328,14 +336,20 @@ run_selected_tasks() {
 
   TASK_RESULTS=()
   TASK_FAILURES=()
+  _install_ok=0
+  _install_fail=0
+  _install_skip=0
+  _install_ok_list=()
+  _install_fail_list=()
+  _install_skip_list=()
   resolve_task_files "$@" || return 1
 
   for file in "${RESOLVED_TASKS[@]}"; do
     case "$action" in
-    verify) verify_selected_task "$file" || status=1 ;;
-    check-updates) check_updates_selected_task "$file" || status=1 ;;
-    update) update_selected_task "$file" || status=1 ;;
-    *) run_selected_task "$file" || status=1 ;;
+      verify) verify_selected_task "$file" || status=1 ;;
+      check-updates) check_updates_selected_task "$file" || status=1 ;;
+      update) update_selected_task "$file" || status=1 ;;
+      *) run_selected_task "$file" || status=1 ;;
     esac
   done
 
@@ -382,7 +396,7 @@ reset_selected_task() {
     return 1
   fi
 
-  if reset >>"$log" 2>&1 && verify_reset >>"$log" 2>&1; then
+  if reset >> "$log" 2>&1 && verify_reset >> "$log" 2>&1; then
     _runner_redact_log "$log"
     if ! _runner_record "$name" "reset"; then
       error_msg "${name}: Reset verificado, pero no se pudo registrar la evidencia."
@@ -416,6 +430,12 @@ reset_selected_tasks() {
 
   TASK_RESULTS=()
   TASK_FAILURES=()
+  _install_ok=0
+  _install_fail=0
+  _install_skip=0
+  _install_ok_list=()
+  _install_fail_list=()
+  _install_skip_list=()
   resolve_task_files "${selectors[@]}" || return 1
 
   echo ""
@@ -472,56 +492,231 @@ reset_selected_tasks() {
 }
 
 print_task_results() {
-  local result
+  print_summary "Task Results"
+}
 
-  echo ""
-  step "Resultados de tareas"
-  for result in "${TASK_RESULTS[@]}"; do
-    printf '  %s\n' "$result"
+confirm_task_action() {
+  local prompt="$1"
+  local answer=""
+
+  clear || true
+  print_ravn_banner "RaVN Task Runner"
+  print_section "${ICON_UI_COMMAND} Confirm selection"
+  print_info "$prompt"
+
+  if [[ ${RAVN_UI_EFFECTIVE:-${RAVN_UI:-bash}} == gum ]]; then
+    gum confirm "$prompt"
+    return
+  fi
+
+  read -r -p "${LIGHT_GRAY}Proceed? [y/N]:${NC} " answer
+  [[ ${answer,,} == y || ${answer,,} == yes ]]
+}
+
+task_family_display_name() {
+  case "$1" in
+    cli-tools) printf 'CLI Tools' ;;
+    legacy) printf 'Legacy' ;;
+    *) printf '%s' "${1^}" ;;
+  esac
+}
+
+task_family_icon() {
+  case "$1" in
+    cli-tools) printf '%s' "$ICON_UI_TERMINAL" ;;
+    legacy) printf '%s' "$ICON_DIAGNOSTIC_WARNING" ;;
+    *) printf '%s' "$ICON_UI_PACKAGE" ;;
+  esac
+}
+
+task_family_keys() {
+  local file family
+  local -a known=() unknown=()
+
+  while IFS= read -r family; do
+    case "$family" in
+      cli-tools | legacy) known+=("$family") ;;
+      *) unknown+=("$family") ;;
+    esac
+  done < <(
+    for file in "${TASKS[@]}"; do
+      family=$(task_family "$file")
+      [[ -n $family ]] || family="legacy"
+      printf '%s\n' "$family"
+    done | sort -u
+  )
+
+  printf '%s\n' "${known[@]}" "${unknown[@]}" | sed '/^$/d'
+}
+
+task_family_count() {
+  local target="$1"
+  local file family count=0
+
+  for file in "${TASKS[@]}"; do
+    family=$(task_family "$file")
+    [[ -n $family ]] || family="legacy"
+    [[ $family == "$target" ]] && count=$((count + 1))
   done
+  printf '%s\n' "$count"
 }
 
 print_task_catalog() {
-  local file name family
+  local family display count
 
-  echo ""
-  step "Tareas disponibles"
-  for file in "${TASKS[@]}"; do
-    name=$(task_name "$file")
-    family=$(task_family "$file")
-    [[ -z $family ]] && family="legacy"
-    printf '  %-24s [%s]\n' "$name" "$family"
-  done
+  print_section "${ICON_UI_DATABASE} Task inventory"
+  while IFS= read -r family; do
+    display=$(task_family_display_name "$family")
+    count=$(task_family_count "$family")
+    printf '  %s  %s · %s tasks\n' "$(task_family_icon "$family")" "$display" "$count"
+  done < <(task_family_keys)
 }
 
-read_task_selection() {
-  local selection selector
-  local -a selectors=()
+select_task_family() {
+  local family display count choice selected
+  local -a families=() options=()
 
-  read -r -p "Tareas (ALL o separadas por coma, q para cancelar): " selection
-  [[ ${selection,,} == "q" ]] && return 1
-  [[ -z $selection ]] && return 1
+  mapfile -t families < <(task_family_keys)
+  ((${#families[@]} > 0)) || {
+    print_info "No tasks available"
+    return 1
+  }
 
-  IFS=',' read -ra selectors <<<"$selection"
-  for selector in "${selectors[@]}"; do
-    selector="${selector// /}"
-    [[ -n $selector ]] && printf '%s\n' "$selector"
+  local index=1
+  for family in "${families[@]}"; do
+    display=$(task_family_display_name "$family")
+    count=$(task_family_count "$family")
+    options+=("${index}  $(task_family_icon "$family")  ${display} · ${count} tasks")
+    index=$((index + 1))
   done
+  options+=("${index}  ${ICON_UI_DATABASE}  All categories · $((${#TASKS[@]})) tasks")
+
+  clear || true
+  print_ravn_banner "RaVN Task Runner"
+  print_section "${ICON_UI_DATABASE} Choose tasks"
+  if [[ ${RAVN_UI_EFFECTIVE:-${RAVN_UI:-bash}} == gum ]]; then
+    selected=$(gum choose --header "" --cursor "$ICON_UI_ARROW" "${options[@]}") || return 1
+    choice="${selected%% *}"
+  else
+    printf '%s\n' "${options[@]}"
+    printf 'q  %s  Back\n' "$ICON_UI_ARROW_LEFT"
+    read -r -p "${LIGHT_GRAY}Selection:${NC} " choice
+    [[ ${choice,,} == q ]] && return 1
+  fi
+
+  if ! [[ $choice =~ ^[1-9][0-9]*$ ]] || ((choice < 1 || choice > ${#options[@]})); then
+    print_warn "Invalid task family selection: ${choice}"
+    return 1
+  fi
+
+  if ((choice == ${#options[@]})); then
+    SELECTED_TASK_FAMILY="ALL"
+  else
+    SELECTED_TASK_FAMILY="${families[choice - 1]}"
+  fi
+}
+
+select_tasks_for_family() {
+  local file name family display selected choice index
+  local -a files=() names=() options=() selections=()
+
+  while IFS=$'\t' read -r name file; do
+    files+=("$file")
+    names+=("$name")
+  done < <(
+    for file in "${TASKS[@]}"; do
+      family=$(task_family "$file")
+      [[ -n $family ]] || family="legacy"
+      [[ $SELECTED_TASK_FAMILY == ALL || $family == "$SELECTED_TASK_FAMILY" ]] || continue
+      printf '%s\t%s\n' "$(task_name "$file")" "$file"
+    done | sort -f -k1,1
+  )
+
+  ((${#files[@]} > 0)) || {
+    print_info "No tasks available in the selected category"
+    return 1
+  }
+
+  for index in "${!files[@]}"; do
+    family=$(task_family "${files[index]}")
+    [[ -n $family ]] || family="legacy"
+    display=$(task_family_display_name "$family")
+    options+=("$((index + 1))  $(task_family_icon "$family")  ${names[index]} · ${display}")
+  done
+
+  clear || true
+  print_ravn_banner "RaVN Task Runner"
+  print_section "${ICON_UI_DATABASE} Choose tasks"
+  if [[ ${RAVN_UI_EFFECTIVE:-${RAVN_UI:-bash}} == gum ]]; then
+    mapfile -t selections < <(gum choose --no-limit --header "" --cursor "$ICON_UI_ARROW" "${options[@]}") || return 1
+  else
+    printf '%s\n' "${options[@]}"
+    printf 'q  %s  Back\n' "$ICON_UI_ARROW_LEFT"
+    read -r -p "${LIGHT_GRAY}Selection (comma-separated):${NC} " selected
+    [[ ${selected,,} == q || -z $selected ]] && return 1
+    IFS=',' read -ra selections <<< "$selected"
+  fi
+
+  SELECTED_TASKS=()
+  for selected in "${selections[@]}"; do
+    choice="${selected%% *}"
+    if [[ $choice =~ ^[1-9][0-9]*$ ]] && ((choice <= ${#files[@]})); then
+      SELECTED_TASKS+=("$(task_name "${files[choice - 1]}")")
+    fi
+  done
+  ((${#SELECTED_TASKS[@]} > 0)) || {
+    print_info "No tasks selected"
+    return 1
+  }
 }
 
 run_menu_selection() {
   local action="$1"
   local -a selectors=()
 
-  mapfile -t selectors < <(read_task_selection)
-  ((${#selectors[@]} > 0)) || return 0
+  select_task_family || return 0
+  select_tasks_for_family || return 0
+  selectors=("${SELECTED_TASKS[@]}")
+  if [[ $action == "test" || $action == "reset" || $action == "run" ]]; then
+    if ! confirm_task_action "${#selectors[@]} selected task(s) will be processed"; then
+      print_info "Action cancelled"
+      return 0
+    fi
+  fi
   if [[ $action == "test" ]]; then
     test_selected_tasks "${selectors[@]}"
   elif [[ $action == "reset" ]]; then
-    reset_selected_tasks "${selectors[@]}"
+    reset_selected_tasks --yes "${selectors[@]}"
   else
     run_selected_tasks "$action" "${selectors[@]}"
   fi
+}
+
+task_runner_main_menu_options() {
+  printf '1  %s  Verify current configuration\n' "$ICON_UI_GEAR"
+  printf '2  %s  Run full setup\n' "$ICON_UI_ROCKET"
+  printf '3  %s  Run integration test\n' "$ICON_UI_TEST"
+  printf '4  %s  Reset selected tasks\n' "$ICON_UI_TRASH"
+  printf 'q  %s  Exit\n' "$ICON_UI_CLOSE"
+}
+
+read_task_runner_main_menu_choice() {
+  local -a options=()
+  local choice=""
+  local gum_choice=""
+
+  mapfile -t options < <(task_runner_main_menu_options)
+  if [[ ${RAVN_UI_EFFECTIVE:-${RAVN_UI:-bash}} == gum ]]; then
+    gum_choice=$(gum choose --header "" --cursor "$ICON_UI_ARROW" "${options[@]}") || return 1
+    MENU_CHOICE="${gum_choice%% *}"
+    return 0
+  fi
+
+  for choice in "${options[@]}"; do
+    printf '  %b%s%b  %s\n' "$GREEN" "${choice%% *}" "$NC" "${choice#*  }"
+  done
+  read -r -p "${LIGHT_GRAY}Selection:${NC} " choice
+  MENU_CHOICE="$choice"
 }
 
 run_menu() {
@@ -530,36 +725,39 @@ run_menu() {
   discover_tasks
 
   while true; do
-    echo ""
-    step "RaVN Task Runner"
+    clear || true
+    print_ravn_banner "RaVN Task Runner"
+    print_section "${ICON_UI_COMMAND} Choose an action"
     print_task_catalog
     echo ""
-    printf '  1  Verify current configuration\n'
-    printf '  2  Run full setup\n'
-    printf '  3  Run integration test\n'
-    printf '  4  Reset selected tasks\n'
-    printf '  q  Exit\n'
-    read -r -p "Selecciona una opción: " choice
+    if ! read_task_runner_main_menu_choice; then
+      continue
+    fi
+    choice="$MENU_CHOICE"
 
     case "${choice,,}" in
-    1)
-      run_selected_tasks verify ALL || true
-      ;;
-    2)
-      run_menu_selection run || true
-      ;;
-    3)
-      run_menu_selection test || true
-      ;;
-    4)
-      run_menu_selection reset || true
-      ;;
-    q)
-      return 0
-      ;;
-    *)
-      warn_msg "Opción no válida: ${choice}"
-      ;;
+      1)
+        run_menu_selection verify || true
+        ;;
+      2)
+        if confirm_task_action "All discovered tasks will be executed"; then
+          run_pipeline || true
+        else
+          print_info "Action cancelled"
+        fi
+        ;;
+      3)
+        run_menu_selection test || true
+        ;;
+      4)
+        run_menu_selection reset || true
+        ;;
+      q)
+        return 0
+        ;;
+      *)
+        warn_msg "Opción no válida: ${choice}"
+        ;;
     esac
   done
 }

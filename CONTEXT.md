@@ -12,6 +12,22 @@ _Avoid_: new helper, preferred helper
 The unchanged `Scripts/global_fn.sh` implementation used as the compatibility reference during side-by-side validation.
 _Avoid_: old helper, secondary helper
 
+**Baseline implementation**:
+The unchanged legacy installation flow used as the behavioral reference during migration.
+_Avoid_: old script, deprecated implementation
+
+**Candidate implementation**:
+The new RaVN task flow evaluated against the baseline implementation before it is allowed to replace the legacy integration.
+_Avoid_: replacement script, experimental script
+
+**Migration orchestrator**:
+The first candidate task that coordinates the complete dotfiles installation flow end to end while preserving explicit stage boundaries for later extraction.
+_Avoid_: package task, monolithic script
+
+**Stage boundary**:
+An observable transition in the installation flow with declared inputs, outputs, authority, failure behavior, and verification evidence.
+_Avoid_: arbitrary function, shell section
+
 **Semantic equivalence**:
 Preservation of the same observable events, ordering, return statuses, exported state, simulated effects, warnings, and errors, while allowing intentional visual differences.
 _Avoid_: textual equality, identical output
@@ -23,6 +39,10 @@ _Avoid_: manual comparison, visual test only
 **Sandboxed comparison**:
 A side-by-side validation run whose helpers, script copies, home directory, caches, bare repositories, and worktrees are isolated in a temporary directory.
 _Avoid_: live test, direct system test
+
+**Visual-equivalence exception**:
+A deliberate difference in banners, colors, spacing, wording, timestamps, or other presentation details that does not change semantic behavior.
+_Avoid_: tolerated regression, output mismatch
 
 ## Scope Boundaries
 
@@ -135,6 +155,34 @@ A future test adapter that runs tasks or complete revisions inside a virtual
 machine; it is outside the current suite-scope design increment.
 _Avoid_: Docker replacement, VM mode
 
+**RavnVM development session**:
+A developer-controlled QEMU/KVM environment provisioned to inspect and test one specified RaVN branch or commit, with optional persistence for interactive investigation.
+_Avoid_: task runner, CI runner, generic scenario runner
+
+**Test revision**:
+The exact RaVN branch or commit selected as the subject of a RavnVM development session.
+_Avoid_: latest code, current checkout
+
+**Pre-integration validation**:
+The developer practice of exercising a feature branch or commit in RavnVM so its behavior can be inspected before the change is integrated into `dev`.
+_Avoid_: CI approval, post-merge testing
+
+**RavnVM interactive menu**:
+The no-argument user interface for selecting an existing RavnVM operation while preserving direct invocation through the current positional arguments and flags.
+_Avoid_: replacement CLI, task menu, scenario runner
+
+**RavnVM interaction surface**:
+An entrypoint through which a developer starts or inspects a RavnVM development session: direct CLI invocation, the interactive menu, or the repository's `make` development targets.
+_Avoid_: separate VM implementation, task runner
+
+**Make VM interface**:
+The existing `make/dev.mk` targets that expose RavnVM operations through `make`, including branch/commit selection via `REF`, resource overrides, persistence, dry-run, snapshot management, dependency setup, and disk inspection.
+_Avoid_: make backend, alternate VM engine
+
+**Graceful abort**:
+The controlled termination of the current RavnVM operation after an error or edge case, preserving diagnostic evidence, cleaning up owned temporary resources, and returning control without hiding the failure.
+_Avoid_: silent recovery, forced exit, best-effort continuation
+
 **Activation boundary**:
 The event or action required before an applied change becomes effective, such
 as a reboot, new login session, daemon reload, or network reconnection.
@@ -210,6 +258,38 @@ _Avoid_: test script, smoke test
 The shared declaration and lifecycle hooks that define a task's profile,
 permissions, ownership, desired changes, postconditions, evidence, activation
 boundary, and recovery behavior.
+
+**Task runner visual language**:
+The shared presentation language for RaVN task interfaces: the RAVN brand,
+single-author byline, global Nerd Font icon catalog, global color palette,
+semantic status helpers, English user-facing copy, and consistent section and
+selector structure.
+_Avoid_: local palette, script-specific visual language, decorative redesign.
+
+**Modern selector**:
+The gum-backed interactive selector used by the task menu when an interactive
+TTY and the required dependencies are available.
+_Avoid_: gum as a replacement for task execution logic, numbered gum menu.
+
+**Bash fallback**:
+The numbered, global-helper-based selector used when `RAVN_UI=bash` is set or
+the terminal cannot support the modern selector contract.
+_Avoid_: degraded output, legacy interface.
+
+**UI mode**:
+The explicit `RAVN_UI` choice controlling interactive presentation: `auto`,
+`gum`, or `bash`.
+_Avoid_: font detection, selector backend, execution mode.
+
+**Interactive dependency preflight**:
+The Arch-only validation and conditional installation of `git`, `curl`, and
+`gum` that completes before the task runner presents any interactive UI.
+_Avoid_: task verification, per-task dependency check.
+
+**Task selector item**:
+The user-visible representation of a discovered task, composed of its semantic
+Nerd Font icon, task name, and task family/category.
+_Avoid_: raw task filename, menu action.
 _Avoid_: legacy task shape, install script
 
 **Read-only plan**:

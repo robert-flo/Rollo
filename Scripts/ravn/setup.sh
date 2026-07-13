@@ -27,6 +27,60 @@ if [[ -z ${flg_DryRun:-} ]]; then
 fi
 export flg_DryRun
 
+RAVN_UI="${RAVN_UI:-auto}"
+export RAVN_UI
+
+ravn_validate_interactive_dependencies() {
+  local os_id=""
+  local command_name=""
+  local -a missing=()
+
+  [[ -r /etc/os-release ]] || {
+    print_error "Unsupported operating system; Ravn Task Runner supports Arch Linux and Arch-based systems only"
+    return 1
+  }
+  # shellcheck disable=SC1091
+  source /etc/os-release
+  os_id="${ID:-}"
+  if [[ $os_id != "arch" && ${ID_LIKE:-} != *arch* ]]; then
+    print_error "Unsupported operating system; Ravn Task Runner supports Arch Linux and Arch-based systems only"
+    return 1
+  fi
+
+  case "$RAVN_UI" in
+    auto | gum | bash) ;;
+    *)
+      print_error "Invalid RAVN_UI value: ${RAVN_UI} (expected auto, gum, or bash)"
+      return 1
+      ;;
+  esac
+
+  for command_name in git curl gum; do
+    command_exists "$command_name" || missing+=("$command_name")
+  done
+
+  if ((${#missing[@]} > 0)); then
+    sudo pacman -Syu --noconfirm --needed git curl gum || {
+      print_error "Unable to install interactive dependencies: ${missing[*]}"
+      return 1
+    }
+  fi
+
+  for command_name in git curl gum; do
+    if ! command_exists "$command_name"; then
+      print_error "Required command not found after preflight: ${command_name}"
+      return 1
+    fi
+  done
+
+  if [[ $RAVN_UI == bash ]]; then
+    RAVN_UI_EFFECTIVE="bash"
+  else
+    RAVN_UI_EFFECTIVE="gum"
+  fi
+  export RAVN_UI_EFFECTIVE
+}
+
 # ─── Source framework modules ────────────────────────────────────────────────
 for fw in "${RAVN_DIR}"/framework/*.sh; do
   # shellcheck disable=SC1090
@@ -44,9 +98,10 @@ main() {
       return 0
     fi
     if [[ ! -t 0 ]]; then
-      error_msg "Sin subcomando en entorno no interactivo. Use: setup.sh run|verify|reset|update|check-updates <tarea>"
+      error_msg "No subcommand in non-interactive mode. Use: setup.sh run|verify|reset|update|check-updates <task>"
       return 2
     fi
+    ravn_validate_interactive_dependencies || return
     run_menu
     return
   fi
