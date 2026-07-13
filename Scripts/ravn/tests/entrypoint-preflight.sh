@@ -11,7 +11,7 @@ bin_dir="$fixture_dir/bin"
 os_release="$fixture_dir/os-release"
 mkdir -p "$bin_dir"
 
-for command_name in bash cat clear dirname env find grep mkdir realpath rm sed sort touch; do
+for command_name in bash cat clear dirname env find grep mkdir mktemp realpath rm sed sort touch; do
   ln -s "/usr/bin/$command_name" "$bin_dir/$command_name"
 done
 
