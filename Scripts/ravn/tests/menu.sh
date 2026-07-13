@@ -13,7 +13,12 @@ done
 
 output=""
 RAVN_UI_EFFECTIVE=bash
-output=$(printf 'q\n' | run_menu)
+output=$(printf 'q\n' | run_menu 2>&1)
+
+if grep -q 'readonly variable' <<< "$output"; then
+  printf 'FAIL: task discovery exposed readonly-variable errors\n' >&2
+  exit 1
+fi
 
 grep -q "Verify current configuration" <<< "$output"
 grep -q "Run full setup" <<< "$output"

@@ -22,17 +22,17 @@ load_task() {
   source "$file"
 }
 
-task_name() {
+task_name() (
   local file="$1"
   load_task "$file"
   printf '%s' "${PACKAGE:-$(basename "$file" .sh)}"
-}
+)
 
-task_family() {
+task_family() (
   local file="$1"
   load_task "$file"
   printf '%s' "${TASK_FAMILY:-}"
-}
+)
 
 task_is_disabled() {
   local name="$1"
@@ -495,12 +495,12 @@ print_task_results() {
   print_summary "Task Results"
 }
 
-task_description() {
+task_description() (
   local file="$1"
 
   load_task "$file"
   printf '%s' "${DESCRIPTION:-No description available.}"
-}
+)
 
 print_task_preview() {
   local file name description
