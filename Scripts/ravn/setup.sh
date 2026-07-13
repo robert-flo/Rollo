@@ -29,18 +29,21 @@ export flg_DryRun
 
 RAVN_UI="${RAVN_UI:-auto}"
 export RAVN_UI
+RAVN_OS_RELEASE_FILE="${RAVN_OS_RELEASE_FILE:-/etc/os-release}"
+export RAVN_OS_RELEASE_FILE
 
 ravn_validate_interactive_dependencies() {
   local os_id=""
   local command_name=""
   local -a missing=()
 
-  [[ -r /etc/os-release ]] || {
+  [[ -r $RAVN_OS_RELEASE_FILE ]] || {
     print_error "Unsupported operating system; Ravn Task Runner supports Arch Linux and Arch-based systems only"
     return 1
   }
   # shellcheck disable=SC1091
-  source /etc/os-release
+  # shellcheck disable=SC1090
+  source "$RAVN_OS_RELEASE_FILE"
   os_id="${ID:-}"
   if [[ $os_id != "arch" && ${ID_LIKE:-} != *arch* ]]; then
     print_error "Unsupported operating system; Ravn Task Runner supports Arch Linux and Arch-based systems only"
@@ -137,8 +140,8 @@ main() {
     return
   fi
 
-  step "Configuración Final"
-  print_log -g "[FINAL CONFIG] " -b " :: " "Iniciando configuración final..."
+  step "Final Configuration"
+  print_log -g "[FINAL CONFIG] " -b " :: " "Starting final configuration..."
 
   discover_tasks
   run_pipeline

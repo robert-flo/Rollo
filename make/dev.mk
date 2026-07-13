@@ -1,9 +1,9 @@
 # ═══════════════════════════════════════════════════════════════
 # 🔬 DEVELOPMENT TOOLS - Package search and analysis
 # ═══════════════════════════════════════════════════════════════
-# 📚 Documentation: docs/src/content/docs/makefile/08-dev.mdx
+# 📚 Documentation: Scripts/ravnvm/README.md (Make integration)
 # 🎯 Purpose: VM development sessions, dependency checks, and storage inspection
-# ──── Overview: 7 targets for development and VM inspection tasks ────
+# ──── Overview: 9 targets for development and VM inspection tasks ────
 #
 # 🧪 Dry Run (preview without executing):
 #    make dev-vm         DRY_RUN=1   · skip running vm
@@ -25,7 +25,7 @@
 #    make dev-vm-setup               · verify and install VM dependencies
 #    make dev-vm-size                · check VM disk usage and free space
 
-.PHONY: dev-vm dev-vm-persist dev-vm-list dev-vm-clean dev-vm-setup dev-vm-size dev-setup
+.PHONY: help dev-vm dev-vm-persist dev-vm-list dev-vm-clean dev-vm-setup dev-vm-size dev-vm-ssh dev-setup
 
 # ──── Dry Run: make <target> DRY_RUN=1 to preview without executing ─
 DRY_RUN ?= 0
@@ -37,6 +37,16 @@ else
 endif
 
 # === Analysis and Development ===
+
+help: ## Show the RavnVM development targets
+	@printf "$(CYAN)RavnVM development targets$(NC)\n"
+	@printf "  make dev-vm             Run an ephemeral VM\n"
+	@printf "  make dev-vm-persist     Run a persistent VM\n"
+	@printf "  make dev-vm-list        List VM snapshots\n"
+	@printf "  make dev-vm-clean       Clean VM snapshots while preserving the base image\n"
+	@printf "  make dev-vm-size        Show VM storage usage\n"
+	@printf "  make dev-vm-setup       Check or install VM dependencies\n"
+	@printf "  make dev-vm-ssh         Connect to the running VM via SSH\n"
 
 # ═══════════════════════════════════════════════════════════════
 # 🖥️  DEV-VM - Virtual Machine commands using ravnvm
@@ -175,6 +185,20 @@ endif
 	@printf "$(DIM)────────────────────────────────────────────────────────────────────────────────$(NC)\n"
 	@printf "  • list cached vm snapshots: $(BLUE)make dev-vm-list$(NC)\n"
 	@printf "  • clean vm cached images:   $(BLUE)make dev-vm-clean$(NC)\n\n"
+
+dev-vm-ssh: ## Connect to the running VM via SSH
+ifndef EMBEDDED
+	@printf "\n$(CYAN)🔐 dev-vm-ssh · connect to running vm$(NC)\n"
+	@printf "$(CYAN)────────────────────────────────────────────────────────────────────────────────$(NC)\n"
+endif
+	@if [ "$$DRY_RUN" = "1" ]; then \
+		printf "  ▶ [dry-run] Scripts/ravnvm/ravnvm.sh --ssh\n"; \
+	else \
+		Scripts/ravnvm/ravnvm.sh --ssh; \
+	fi
+ifndef EMBEDDED
+	@printf "\n$(GREEN)  ✓ session ended$(NC)\n"
+endif
 
 # ═══════════════════════════════════════════════════════════════
 # 🔧 DEV-SETUP - Wire git hooks and prepare dev environment
