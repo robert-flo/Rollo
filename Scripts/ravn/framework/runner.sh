@@ -495,6 +495,26 @@ print_task_results() {
   print_summary "Task Results"
 }
 
+task_description() {
+  local file="$1"
+
+  load_task "$file"
+  printf '%s' "${DESCRIPTION:-No description available.}"
+}
+
+print_task_preview() {
+  local file name description
+
+  clear || true
+  print_ravn_banner "RaVN Task Runner"
+  print_section "${ICON_UI_DATABASE} Task preview"
+  for file in "$@"; do
+    name=$(task_name "$file")
+    description=$(task_description "$file")
+    printf '  %s  %s\n' "$name" "$description"
+  done
+}
+
 confirm_task_action() {
   local prompt="$1"
   local answer=""
@@ -695,6 +715,8 @@ run_menu_selection() {
   select_task_family || return 0
   select_tasks_for_family || return 0
   selectors=("${SELECTED_TASKS[@]}")
+  resolve_task_files "${selectors[@]}" || return 0
+  print_task_preview "${RESOLVED_TASKS[@]}"
   if [[ $action == "test" || $action == "reset" || $action == "run" ]]; then
     if ! confirm_task_action "${#selectors[@]} selected task(s) will be processed"; then
       print_info "Action cancelled"
@@ -761,6 +783,7 @@ run_menu() {
         run_menu_selection verify || true
         ;;
       2)
+        print_task_preview "${TASKS[@]}"
         if confirm_task_action "All discovered tasks will be executed"; then
           run_pipeline || true
         else
