@@ -258,6 +258,38 @@ _Avoid_: test script, smoke test
 The shared declaration and lifecycle hooks that define a task's profile,
 permissions, ownership, desired changes, postconditions, evidence, activation
 boundary, and recovery behavior.
+
+**Task runner visual language**:
+The shared presentation language for RaVN task interfaces: the RAVN brand,
+single-author byline, global Nerd Font icon catalog, global color palette,
+semantic status helpers, English user-facing copy, and consistent section and
+selector structure.
+_Avoid_: local palette, script-specific visual language, decorative redesign.
+
+**Modern selector**:
+The gum-backed interactive selector used by the task menu when an interactive
+TTY and the required dependencies are available.
+_Avoid_: gum as a replacement for task execution logic, numbered gum menu.
+
+**Bash fallback**:
+The numbered, global-helper-based selector used when `RAVN_UI=bash` is set or
+the terminal cannot support the modern selector contract.
+_Avoid_: degraded output, legacy interface.
+
+**UI mode**:
+The explicit `RAVN_UI` choice controlling interactive presentation: `auto`,
+`gum`, or `bash`.
+_Avoid_: font detection, selector backend, execution mode.
+
+**Interactive dependency preflight**:
+The Arch-only validation and conditional installation of `git`, `curl`, and
+`gum` that completes before the task runner presents any interactive UI.
+_Avoid_: task verification, per-task dependency check.
+
+**Task selector item**:
+The user-visible representation of a discovered task, composed of its semantic
+Nerd Font icon, task name, and task family/category.
+_Avoid_: raw task filename, menu action.
 _Avoid_: legacy task shape, install script
 
 **Read-only plan**:
