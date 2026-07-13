@@ -13,7 +13,12 @@ done
 
 output=""
 RAVN_UI_EFFECTIVE=bash
-output=$(printf 'q\n' | run_menu)
+output=$(printf 'q\n' | run_menu 2>&1)
+
+if grep -q 'readonly variable' <<< "$output"; then
+  printf 'FAIL: task discovery exposed readonly-variable errors\n' >&2
+  exit 1
+fi
 
 grep -q "Verify current configuration" <<< "$output"
 grep -q "Run full setup" <<< "$output"
@@ -22,6 +27,19 @@ grep -q "Reset selected tasks" <<< "$output"
 grep -q "RaVN Task Runner" <<< "$output"
 grep -q "Choose an action" <<< "$output"
 grep -q "Exit" <<< "$output"
+if grep -Eiq 'deshabilitado|instalación|verificación|opción|cancelado|tarea no encontrada' <<< "$output"; then
+  printf 'FAIL: interactive menu exposed non-English text\n' >&2
+  exit 1
+fi
+
+if printf '\033\n' | read_task_runner_main_menu_choice > /dev/null 2>&1; then
+  printf 'FAIL: Escape did not return from the main menu\n' >&2
+  exit 1
+fi
+if read_task_runner_main_menu_choice < /dev/null > /dev/null 2>&1; then
+  printf 'FAIL: EOF was accepted as a main-menu choice\n' >&2
+  exit 1
+fi
 
 # shellcheck disable=SC2329 # Invoked indirectly by read_task_runner_main_menu_choice.
 gum() {

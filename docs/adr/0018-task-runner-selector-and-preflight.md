@@ -55,3 +55,11 @@ reinterpret the summary.
 - Interactive startup may install missing UI dependencies on supported Arch
   hosts before any task-runner output is displayed.
 - A limited terminal can still use the explicit Bash interface.
+
+## Entrypoint execution matrix
+
+The executable entrypoint selects the interactive UI only when it has a TTY.
+`RAVN_UI=auto` uses gum in a supported interactive terminal; `RAVN_UI=gum` and
+`RAVN_UI=bash` remain explicit overrides. No-TTY setup, direct subcommands,
+dry-run, and CI-compatible invocations bypass interactive preflight and never
+invoke gum.
