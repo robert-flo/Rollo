@@ -765,7 +765,14 @@ read_task_runner_main_menu_choice() {
 run_menu() {
   local choice
 
-  discover_tasks
+  if ! discover_tasks; then
+    error_msg "Task discovery failed; the interactive menu cannot start."
+    return 1
+  fi
+  if [[ ${RAVN_DISCOVERY_RESULT:-} == empty ]]; then
+    info "No tasks are available; the interactive menu cannot start."
+    return 0
+  fi
 
   while true; do
     clear || true
