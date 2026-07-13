@@ -600,7 +600,9 @@ select_task_family() {
   else
     printf '%s\n' "${options[@]}"
     printf 'q  %s  Back\n' "$ICON_UI_ARROW_LEFT"
-    read -r -p "${LIGHT_GRAY}Selection:${NC} " choice
+    if ! read -r -p "${LIGHT_GRAY}Selection:${NC} " choice; then
+      return 1
+    fi
     [[ ${choice,,} == q || $choice == $'\e' ]] && return 1
   fi
 
@@ -617,7 +619,7 @@ select_task_family() {
 }
 
 select_tasks_for_family() {
-  local file name family display selected choice index
+  local file name family display selected choice index invalid=0
   local -a files=() names=() options=() selections=()
 
   while IFS=$'\t' read -r name file; do
@@ -652,18 +654,34 @@ select_tasks_for_family() {
   else
     printf '%s\n' "${options[@]}"
     printf 'q  %s  Back\n' "$ICON_UI_ARROW_LEFT"
-    read -r -p "${LIGHT_GRAY}Selection (comma-separated):${NC} " selected
+    if ! read -r -p "${LIGHT_GRAY}Selection (comma-separated):${NC} " selected; then
+      return 1
+    fi
     [[ ${selected,,} == q || $selected == $'\e' || -z $selected ]] && return 1
     IFS=',' read -ra selections <<< "$selected"
   fi
 
   SELECTED_TASKS=()
   for selected in "${selections[@]}"; do
-    choice="${selected%% *}"
+    if [[ ${RAVN_UI_EFFECTIVE:-${RAVN_UI:-bash}} == gum ]]; then
+      choice="${selected%% *}"
+    elif [[ $selected =~ ^[[:space:]]*([1-9][0-9]*)[[:space:]]*$ ]]; then
+      choice="${BASH_REMATCH[1]}"
+    else
+      invalid=1
+      continue
+    fi
     if [[ $choice =~ ^[1-9][0-9]*$ ]] && ((choice <= ${#files[@]})); then
       SELECTED_TASKS+=("$(task_name "${files[choice - 1]}")")
+    else
+      invalid=1
     fi
   done
+  if ((invalid == 1)); then
+    SELECTED_TASKS=()
+    print_warn "Invalid task selection; no tasks were selected."
+    return 1
+  fi
   ((${#SELECTED_TASKS[@]} > 0)) || {
     print_info "No tasks selected"
     return 1
@@ -715,7 +733,9 @@ read_task_runner_main_menu_choice() {
   for choice in "${options[@]}"; do
     printf '  %b%s%b  %s\n' "$GREEN" "${choice%% *}" "$NC" "${choice#*  }"
   done
-  read -r -p "${LIGHT_GRAY}Selection:${NC} " choice
+  if ! read -r -p "${LIGHT_GRAY}Selection:${NC} " choice; then
+    return 1
+  fi
   [[ $choice == $'\e' ]] && return 1
   MENU_CHOICE="$choice"
 }
@@ -732,7 +752,7 @@ run_menu() {
     print_task_catalog
     echo ""
     if ! read_task_runner_main_menu_choice; then
-      continue
+      return 0
     fi
     choice="$MENU_CHOICE"
 
